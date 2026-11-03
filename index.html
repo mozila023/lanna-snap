@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lanna Snap · ล้านนาสแนป</title>
+<meta name="theme-color" content="#17121f">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mitr:wght@400;500;600;700&family=Chakra+Petch:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <section id="scrLogin" class="scr">
+    <div class="loginBox">
+      <div class="logo"><span class="l1">ล้านนา</span><span class="l2">SNAP</span><small>การ์ดเกม 9 จังหวัดภาคเหนือ</small></div>
+      <button id="btnGoogle" class="btn primary" type="button">เข้าสู่ระบบด้วย Google</button>
+      <button id="btnGuest" class="btn ghost" type="button">เล่นแบบผู้เยี่ยมชม</button>
+      <p id="loginMsg" class="muted"></p>
+    </div>
+  </section>
+  <section id="scrHome" class="scr" hidden>
+    <header class="topbar"><div class="who"><span id="pName">ผู้เล่น</span><small id="pCL">ระดับคอลเลกชัน 1</small></div><div class="bia" title="เบี้ย"><span class="shell">◖</span><b id="pBia">0</b></div><button id="btnLogout" class="mini" type="button">ออก</button></header>
+    <div class="homeHero">
+      <div class="logo sm"><span class="l1">ล้านนา</span><span class="l2">SNAP</span></div>
+      <div id="homeDeckPreview" class="deckStrip"></div>
+      <button id="btnPlay" class="btn play" type="button">เล่นกับ AI</button>
+      <button class="btn ghost" type="button" disabled>สุ่มแมตช์ออนไลน์ · เร็วๆ นี้</button>
+    </div>
+    <nav class="tabs"><button data-go="scrHome" class="on" type="button">หน้าหลัก</button><button data-go="scrDeck" type="button">เด็ค</button><button data-go="scrColl" type="button">คอลเลกชัน</button><button data-go="scrShop" type="button">ร้านค้า</button></nav>
+  </section>
+  <section id="scrDeck" class="scr" hidden>
+    <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>เด็คของฉัน</span><small id="deckCount">0/12</small></div><button id="btnAutoDeck" class="mini" type="button">จัดให้</button></header>
+    <div id="deckSlots" class="deckSlots"></div>
+    <div id="deckFilter" class="filters"></div>
+    <div id="deckPool" class="grid"></div>
+  </section>
+  <section id="scrColl" class="scr" hidden>
+    <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>คอลเลกชัน</span><small id="collCount"></small></div><div class="bia"><span class="shell">◖</span><b class="biaMirror">0</b></div></header>
+    <div id="collFilter" class="filters"></div>
+    <div id="collGrid" class="grid"></div>
+  </section>
+  <section id="scrShop" class="scr" hidden>
+    <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>กาดล้านนา · ร้านค้า</span><small id="shopDay"></small></div><div class="bia"><span class="shell">◖</span><b class="biaMirror">0</b></div></header>
+    <div id="shopBody" class="shop"></div>
+  </section>
+  <section id="scrMatch" class="scr" hidden>
+    <div class="mTop"><div class="opp"><span id="oppName">AI</span></div><div class="stakeBox"><div id="cubes" class="cubes">1</div><small id="stakeLbl"></small></div><button id="btnRetreat" class="mini" type="button">ถอย</button></div>
+    <div id="templeSlot" class="templeSlot"><span class="tsLabel">ช่องวัด</span><div class="tsCard"></div></div>
+    <div id="board" class="board"></div>
+    <div class="mBottom">
+      <div id="hand" class="hand"></div>
+      <div class="actions"><div class="energy"><span id="energy">1</span><small>พลังงาน</small></div><button id="btnSnap" class="btn snap" type="button">สแนป</button><button id="btnEnd" class="btn end" type="button">จบเทิร์น <span id="turnLbl">1/6</span></button></div>
+    </div>
+    <div id="toast" class="toast" hidden></div>
+  </section>
+  <div id="modal" class="modal" hidden><div class="mBox"><button class="mClose" type="button" aria-label="ปิด">✕</button><div id="mBody"></div></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="src/cards.js"></script>
+<script src="src/engine.js"></script>
+<script src="src/fx.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>
