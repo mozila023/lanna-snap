@@ -10,12 +10,12 @@ const UP_SPARE=[1,2,3,4,5,8], UP_BIA=[25,100,200,300,400,1500]; const MAX_BONUS=
 const PLAYABLE=C.filter(c=>!c.token);
 const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='legend'?'legend':'common';
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
-const KEY='lannasnap-v1';
+const KEY='lannasnap-v1'; const EPOCH=2; // bump to wipe every save (local + cloud) — 2026-11-04 reset
 let user=null, prof=null;
-function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,tut:false,tutReward:false,firstTopup:false}; }
-function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1) return s; }catch(e){} return null; }
+function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,epoch:EPOCH,tut:false,tutReward:false,firstTopup:false}; }
+function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1&&s.epoch===EPOCH) return s; if(s){ localStorage.removeItem(KEY); localStorage.removeItem('lannasnap-topup-hide'); } }catch(e){} return null; }
 async function saveProfile(){ try{ localStorage.setItem(KEY,JSON.stringify(prof)); }catch(e){} if(sb&&user){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
-async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data) return data.data; }catch(e){} return null; }
+async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data&&data.data.epoch===EPOCH) return data.data; }catch(e){} return null; }
 
 /* ---------- screens ---------- */
 function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop') renderShop(); }
