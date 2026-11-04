@@ -33,7 +33,7 @@ async function startEcon(){ ECON=false; if(!sb||!user) return; try{ const {data,
 
 /* ---------- screens ---------- */
 function syncNav(){ const cur=$$('.scr').find(s=>!s.hidden); const hide=!cur||cur.id==='scrMatch'||cur.id==='scrLogin'; $('#mainNav').hidden=hide; $('#app').classList.toggle('withNav',!hide); }
-function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); setTimeout(syncNav,0); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop'){ renderShop(); if(ECON&&!prof.shop.offers) rpc('shop_offers').then(()=>{ if(!$('#scrShop').hidden) renderShop(); }).catch(err=>toast(err.message)); } if(id==='scrProfile') renderProfile(); }
+function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); setTimeout(syncNav,0); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrBoard') renderBoard(); if(id==='scrShop'){ renderShop(); if(ECON&&!prof.shop.offers) rpc('shop_offers').then(()=>{ if(!$('#scrShop').hidden) renderShop(); }).catch(err=>toast(err.message)); } if(id==='scrProfile') renderProfile(); }
 document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) show(g.dataset.go); });
 const sfx=n=>{ try{ AUD.sfx(n); }catch(e){} };
 function toast(msg,ms=1400){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,ms); }
@@ -67,7 +67,7 @@ async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filt
 
 /* ---------- home / deck / collection ---------- */
 function renderTop(){ if(!prof) return; $('#pAv').innerHTML=avatarHTML(); $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
-function renderHome(){ renderTop(); const rk=rankOf(prof.rank||0); $('#homeRank').innerHTML=`<span class="rkDot" style="--rc:${rk.c}"></span><b>${rk.n}</b><small>${prof.rank||0} แต้ม${rk.next?` · อีก ${rk.next.p-(prof.rank||0)} ถึง ${rk.next.n}`:''}</small>`; $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier,up:canUp(id)})).join(''); }
+function renderHome(){ renderTop(); const rk=rankOf(prof.rank||0); $('#homeRank').innerHTML=`<span class="rkDot" style="--rc:${rk.c}"></span><b>${rk.n}</b><small>${prof.rank||0} แต้ม${rk.next?` · อีก ${rk.next.p-(prof.rank||0)} ถึง ${rk.next.n}`:''}</small><span class="rkGo">🏆 อันดับ ›</span>`; $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier,up:canUp(id)})).join(''); }
 let fDeck='all', fColl='all';
 function filterBar(el,cur,set){ el.innerHTML=[['all','ทั้งหมด']].concat(Object.keys(PROV).map(k=>[k,L(PROV[k].ab)])).map(([k,n])=>`<button type="button" data-f="${k}" class="${k===cur?'on':''}">${n}</button>`).join(''); el.onclick=e=>{ const b=e.target.closest('[data-f]'); if(b) set(b.dataset.f); }; }
 function sortDefs(a,b){ return a.cost-b.cost||L(a.name).localeCompare(L(b.name),'th'); }
@@ -360,6 +360,25 @@ function donateModal(){ if(!DONATE.enabled) return;
           const {error}=await sb.storage.from('slips').upload(path,blob,{contentType:'image/jpeg',upsert:false}); if(error) throw new Error(/row-level|policy/i.test(error.message)?'ส่งสลิปครบจำนวนแล้ว ติดต่อผู้สร้างนะ':'อัปโหลดไม่สำเร็จ: '+error.message);
           show(await rpc('submit_slip',{path})); sfx('coin'); toast('ส่งสลิปแล้ว ขอบคุณครับ ❤',2400); }catch(err){ st.textContent=''; toast(err.message,2600); }
         lb.classList.remove('off'); }; }); }
+
+/* ---------- leaderboard: top 100 by rank points, plus my own position (shown up to 500) ---------- */
+let boardCache=null;
+async function renderBoard(force){ const body=$('#boardBody'), meBar=$('#boardMe');
+  if(!sb){ body.innerHTML='<p class="muted center">ตารางอันดับต้องต่ออินเทอร์เน็ต</p>'; meBar.hidden=true; return; }
+  if(!boardCache||force||Date.now()-boardCache.t>30000){ if(!boardCache) body.innerHTML='<p class="muted center">กำลังโหลดอันดับ…</p>';
+    try{ const {data,error}=await sb.rpc('leaderboard'); if(error) throw error; boardCache={t:Date.now(),d:data}; }catch(e){ if(!boardCache){ body.innerHTML='<p class="muted center">โหลดอันดับไม่ได้ ลองใหม่อีกครั้ง</p>'; meBar.hidden=true; return; } } }
+  if($('#scrBoard').hidden) return;
+  const d=boardCache.d||{}, top=d.top||[], me=d.me;
+  const medal=p=>p===1?'🥇':p===2?'🥈':p===3?'🥉':p;
+  body.innerHTML=top.length?`<ol class="bList">${top.map(r=>{ const rk=rankOf(r.rank); return `<li class="bRow${r.pos<=3?' p'+r.pos:''}${r.me?' mine':''}"${r.me?' id="bMine"':''}><span class="bPos">${medal(r.pos)}</span><span class="bAv">${avatarOf(r.av,r.name)}</span><span class="bName"><b>${esc(r.name)}${r.me?' <small class="you">คุณ</small>':''}</b><small style="color:${rk.c}">${rk.n} · ชนะ ${r.wins}</small></span><span class="bPts">${r.rank}<small>แต้ม</small></span></li>`; }).join('')}</ol><p class="muted center bNote">นับเฉพาะแต้มจากแมตช์แรงค์ · ผู้เล่นทั้งหมด ${(d.total||0).toLocaleString()} คน</p>`
+    :'<p class="muted center">ยังไม่มีใครติดอันดับ<br>เล่นแมตช์แรงค์เป็นคนแรกเลย!</p>';
+  let mine;
+  if(!user) mine='<b>ล็อกอินด้วย Google เพื่อติดอันดับ</b>';
+  else if(!me) mine='<b>ยังไม่มีแต้มแรงค์</b><small>ชนะแมตช์แรงค์เพื่อติดอันดับ</small>';
+  else { const rk=rankOf(me.rank); mine=`<span class="bPos">${me.pos?'#'+me.pos:'—'}</span><span class="bName"><b>${me.pos?`อันดับของฉัน`:'ไม่ติดอันดับ'}</b><small style="color:${rk.c}">${rk.n} · ${me.rank} แต้ม${me.pos?'':' · ต้องอยู่ใน 500 อันดับแรก'}</small></span>${me.pos&&me.pos<=100?'<button class="mini" id="bJump" type="button">ดูแถวของฉัน</button>':''}`; }
+  meBar.innerHTML=mine; meBar.hidden=false;
+  const j=$('#bJump'); if(j) j.onclick=()=>{ const r=$('#bMine'); if(r){ r.scrollIntoView({block:'center',behavior:'smooth'}); r.classList.remove('bHi'); void r.offsetWidth; r.classList.add('bHi'); } }; }
+$('#boardRefresh').onclick=()=>{ sfx('tap'); renderBoard(true); };
 
 /* ---------- player profile ---------- */
 function avatarHTML(){ const a=prof.avatar; if(a&&a.type==='card'&&CARDS[a.id]) return `<img src="art/${a.id}.webp" alt="">`; if(a&&(a.type==='img'||a.type==='google')&&a.src) return `<img src="${esc(a.src)}" alt="" referrerpolicy="no-referrer">`;

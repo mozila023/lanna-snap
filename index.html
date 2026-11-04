@@ -26,7 +26,7 @@
       <div class="logo sm"><span class="l1">ล้านนา</span><span class="l2">SNAP</span></div>
       <div id="homeDeckPreview" class="deckStrip"></div>
       <button id="btnPlay" class="btn play" type="button">เล่นกับ AI</button>
-      <div class="homeRank" id="homeRank"></div>
+      <button class="homeRank" id="homeRank" type="button" data-go="scrBoard" aria-label="ตารางอันดับ"></button>
       <div class="onlineRow"><button class="btn snap" id="btnRanked" type="button">แมตช์แรงค์</button><button class="btn ghost" id="btnRoom" type="button">ห้องเพื่อน</button></div>
     </div>
   </section>
@@ -44,6 +44,11 @@
   <section id="scrProfile" class="scr" hidden>
     <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>โปรไฟล์ผู้เล่น</span><small id="profSub"></small></div></header>
     <div id="profBody" class="profile"></div>
+  </section>
+  <section id="scrBoard" class="scr" hidden>
+    <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>ตารางอันดับ</span><small id="boardSub">100 อันดับแรก · แต้มแรงค์</small></div><button class="mini" id="boardRefresh" type="button" aria-label="รีเฟรช">↻</button></header>
+    <div id="boardBody" class="lboard"></div>
+    <div id="boardMe" class="boardMe" hidden></div>
   </section>
   <section id="scrShop" class="scr" hidden>
     <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>กาดล้านนา · ร้านค้า</span><small id="shopDay"></small></div><div class="bia"><span class="shell">◖</span><b class="biaMirror">0</b></div></header>
