@@ -10,12 +10,16 @@ const UP_SPARE=[1,2,3,4,5,8], UP_BIA=[25,100,200,300,400,1500]; const MAX_BONUS=
 const PLAYABLE=C.filter(c=>!c.token);
 const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='legend'?'legend':'common';
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
-const KEY='lannasnap-v1'; const EPOCH=2; // bump to wipe every save (local + cloud) — 2026-11-04 reset
+const KEY='lannasnap-v1'; const EPOCH=3; // bump to wipe every save (local + cloud). 3: 2026-11-04 fix for saves copied between Google accounts
+let cloudOK=false; // only write to the cloud after we know what is there
+const lkey=()=>user?KEY+':'+user.id:KEY;
 let user=null, prof=null;
 function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,epoch:EPOCH,created:Date.now(),avatar:null,rank:0,tut:false,tutReward:false,firstTopup:false}; }
-function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1&&s.epoch===EPOCH) return s; if(s){ localStorage.removeItem(KEY); localStorage.removeItem('lannasnap-topup-hide'); } }catch(e){} return null; }
-async function saveProfile(){ try{ localStorage.setItem(KEY,JSON.stringify(prof)); }catch(e){} if(sb&&user){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
-async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data&&data.data.epoch===EPOCH) return data.data; }catch(e){} return null; }
+function loadLocal(){ try{ const k=lkey(); const s=JSON.parse(localStorage.getItem(k)||'null'); if(s&&s.v===1&&s.epoch===EPOCH&&(user?s.uid===user.id:!s.uid)) return s; if(s) localStorage.removeItem(k); }catch(e){} return null; }
+async function saveProfile(){ if(!prof) return; if(user) prof.uid=user.id; try{ localStorage.setItem(lkey(),JSON.stringify(prof)); }catch(e){} if(sb&&user&&cloudOK&&prof.uid===user.id){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
+async function loadCloud(){ // -> {status:'ok',data} | {status:'none'} | {status:'error'}
+  if(!sb||!user) return {status:'error'}; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(error) return {status:'error'}; const d=data&&data.data;
+    if(d&&d.epoch===EPOCH&&(!d.uid||d.uid===user.id)) return {status:'ok',data:d}; return {status:'none'}; }catch(e){ return {status:'error'}; } }
 
 /* ---------- screens ---------- */
 function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop') renderShop(); if(id==='scrProfile') renderProfile(); }
@@ -371,11 +375,15 @@ document.addEventListener('pointerdown',()=>{ try{ AUD.unlock(); }catch(e){} },{
 function soundBtns(){ const p=AUD.pref; $$('.btnMusic').forEach(b=>{ b.classList.toggle('off',!p.music); b.setAttribute('aria-pressed',p.music); }); $$('.btnSfx').forEach(b=>{ b.classList.toggle('off',!p.sfx); b.setAttribute('aria-pressed',p.sfx); }); }
 document.addEventListener('click',e=>{ if(e.target.closest('.btnMusic')){ AUD.setMusic(!AUD.pref.music); soundBtns(); if(AUD.pref.music&&AUD.current) toast('♪ '+AUD.current.th); } else if(e.target.closest('.btnSfx')){ AUD.setSfx(!AUD.pref.sfx); soundBtns(); sfx('tap'); } else if(e.target.closest('.btnNext')){ const t=AUD.shuffle(); if(t){ toast('♪ '+t.th); showTrack(t); } } });
 soundBtns();
-$('#btnGuest').onclick=async()=>{ prof=loadLocal()||freshProfile(); await saveProfile(); enter(); };
+$('#btnGuest').onclick=async()=>{ user=null; cloudOK=false; prof=loadLocal()||freshProfile(); await saveProfile(); enter(); };
 $('#btnGoogle').onclick=async()=>{ if(!sb){ $('#loginMsg').textContent='เชื่อมต่อระบบล็อกอินไม่ได้ ลองเล่นแบบผู้เยี่ยมชมก่อน'; return; }
   try{ const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}); if(error) $('#loginMsg').textContent='ล็อกอิน Google ยังไม่พร้อม: '+error.message; }catch(e){ $('#loginMsg').textContent='เปิดหน้าล็อกอินไม่ได้ในหน้านี้ ลองเปิดจากเว็บไซต์ของเกม'; } };
-$('#btnLogout').onclick=async()=>{ if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; $('#scrHome').hidden=true; $('#scrLogin').hidden=false; };
-(async()=>{ if(sb){ try{ const {data}=await sb.auth.getSession(); if(data&&data.session){ user=data.session.user; const cloud=await loadCloud(); prof=cloud||loadLocal()||freshProfile(); prof.name=(user.user_metadata&&(user.user_metadata.full_name||user.user_metadata.name))||prof.name; await saveProfile(); enter(); return; } }catch(e){} }
+$('#btnLogout').onclick=async()=>{ try{ if(NET) netAbort(); }catch(e){} if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; prof=null; cloudOK=false; $('#scrHome').hidden=true; $('#scrLogin').hidden=false; };
+(async()=>{ if(sb){ try{ const {data}=await sb.auth.getSession(); if(data&&data.session){ user=data.session.user; const cl=await loadCloud(); const gname=(user.user_metadata&&(user.user_metadata.full_name||user.user_metadata.name))||'ผู้เล่น';
+      if(cl.status==='ok'){ prof=cl.data; cloudOK=true; }
+      else if(cl.status==='none'){ prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=true; }
+      else { prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=false; setTimeout(()=>toast('เชื่อมต่อคลาวด์ไม่ได้ · เซฟไว้ในเครื่องนี้ก่อน',2600),900); }
+      prof.uid=user.id; await saveProfile(); enter(); return; } }catch(e){} }
   $('#scrLogin').hidden=false; })();
 window.LS={startTutorial,tutReward,get S(){return S;},get prof(){return prof;},startMatch,newGame,aiPlan,revealTurn,startTurn,queuePlay,finish};
 })();
