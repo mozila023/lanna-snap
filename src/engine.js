@@ -5,8 +5,8 @@ function newGame(o){ // o:{seed, decks:[[ids],[ids]], names:[..]}
   const rng=RNG(o.seed||Date.now());
   let uid=0;
   const mk=(id,owner)=>({uid:++uid,def:CARDS[id],owner,perm:0,costMod:0,loc:-1,status:{},turnPlayed:0,seq:0});
-  const players=[0,1].map(p=>({name:o.names?o.names[p]:'P'+p,deck:rng.shuffle(o.decks[p].map(id=>mk(id,p))),hand:[],played:[],energy:0,snapped:false,retreated:false}));
-  const pool=rng.shuffle(LOCS.slice()); const locs=[0,1,2].map(i=>({def:pool[i],revealed:false,cards:[[],[]],lastPlayed:[null,null]}));
+  const players=[0,1].map(p=>({name:o.names?o.names[p]:'P'+p,deck:(o.noShuffle&&o.noShuffle[p]?(x=>x):rng.shuffle)(o.decks[p].map(id=>mk(id,p))),hand:[],played:[],energy:0,snapped:false,retreated:false}));
+  const pool=o.locs?o.locs.map(id=>LOCMAP[id]):rng.shuffle(LOCS.slice()); const locs=[0,1,2].map(i=>({def:pool[i],revealed:false,cards:[[],[]],lastPlayed:[null,null]}));
   const S={rng,players,locs,turn:0,maxTurn:6,temple:null,log:[],cubes:1,seqN:0,over:false,winner:null,mkCard:mk,nextBonus:[[0,0,0],[0,0,0]],destroyed:[]};
   for(const P of players) for(let i=0;i<3;i++) drawCard(S,P);
   return S; }

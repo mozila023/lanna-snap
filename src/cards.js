@@ -332,6 +332,6 @@ const LOCS=[
 ];
 const LOCMAP={}; for(const l of LOCS) LOCMAP[l.id]=l;
 const STARTER_DECKS={
-  lanna:['rooster','teafarmer','bosang','carriage','horse','morhom','bowlpainter','wualai','elephantlp','tilokaraj','thipchang','chamadevi'],
+  lanna:['rooster','teafarmer','bosang','carriage','horse','morhom','bowlpainter','wualai','elephantlp','lampangluang','khanomjeen','thipchang'],
   ai1:['langsat','kuptai','saltmaker','peacock','pumanyaman','namphi','waterelephant','phuean','phralo','phichai','ngammueang','khunchueang'],
 };

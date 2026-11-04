@@ -26,6 +26,7 @@
       <div id="homeDeckPreview" class="deckStrip"></div>
       <button id="btnPlay" class="btn play" type="button">เล่นกับ AI</button>
       <button class="btn ghost" type="button" disabled>สุ่มแมตช์ออนไลน์ · เร็วๆ นี้</button>
+      <button class="mini" id="btnTut" type="button">สอนเล่นอีกครั้ง</button>
     </div>
     <nav class="tabs"><button data-go="scrHome" class="on" type="button">หน้าหลัก</button><button data-go="scrDeck" type="button">เด็ค</button><button data-go="scrColl" type="button">คอลเลกชัน</button><button data-go="scrShop" type="button">ร้านค้า</button></nav>
   </section>
@@ -46,6 +47,7 @@
   </section>
   <section id="scrMatch" class="scr" hidden>
     <div class="mTop"><div class="opp"><span id="oppName">AI</span></div><div class="stakeBox"><div id="cubes" class="cubes">1</div><small id="stakeLbl"></small></div><button id="btnRetreat" class="mini" type="button">ถอย</button></div>
+    <div id="coach" class="coach" hidden></div>
     <div id="templeSlot" class="templeSlot"><span class="tsLabel">ช่องวัด</span><div class="tsCard"></div></div>
     <div id="board" class="board"></div>
     <div class="mBottom">

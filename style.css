@@ -225,3 +225,25 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .loc .side .card{--w:min(calc(50cqw - 2px),calc((50cqh - 2px)*.75))}
 .loc .side.cap5 .card{--w:min(calc(33.3cqw - 2px),calc((50cqh - 2px)*.75))}
 .loc .tile{aspect-ratio:auto;height:clamp(92px,19vh,150px);z-index:2}
+/* ---------- tutorial coach ---------- */
+.coach{margin:0 6px 4px;display:flex;gap:10px;align-items:flex-start;padding:8px 12px;border-radius:14px;background:linear-gradient(120deg,rgba(60,127,216,.35),rgba(125,90,216,.35));border:1px solid rgba(159,227,255,.45);font-size:14px;line-height:1.45;animation:coachIn .35s ease}
+.coach small{color:#d8ccf0;font-size:12px}
+.coach b{color:var(--gold2)}
+.cAv{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--gold);color:#2a1806;font-weight:700;font-size:12px}
+@keyframes coachIn{from{opacity:0;transform:translateY(-6px)}}
+.hl{position:relative;z-index:4;outline:3px solid var(--gold2);outline-offset:3px;border-radius:12px;animation:hlPulse 1.2s ease-in-out infinite}
+@keyframes hlPulse{50%{outline-color:rgba(255,240,184,.25);box-shadow:0 0 24px rgba(255,220,130,.6)}}
+/* ---------- UP badge ---------- */
+.upb{position:absolute;left:50%;top:-7%;transform:translateX(-50%);z-index:3;padding:1px 7px;border-radius:999px;font-family:var(--fd);font-size:clamp(9px,11cqw,13px);font-weight:700;letter-spacing:.06em;color:#14301c;background:linear-gradient(#b9ffcf,#3fd27a);box-shadow:0 0 0 1.5px #0e2615,0 0 12px rgba(95,211,138,.8);animation:upBob 1.6s ease-in-out infinite}
+@keyframes upBob{50%{transform:translate(-50%,-3px)}}
+/* ---------- 10-card reward ---------- */
+.draw10{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:10px 0}
+.d10{perspective:600px}.d10 .card{--w:100%;transform:rotateY(180deg);filter:brightness(0);transition:transform .5s cubic-bezier(.2,.9,.25,1.2),filter .5s}
+.d10.open .card{transform:none;filter:none}
+/* ---------- first top-up ---------- */
+.topup{display:flex;gap:14px;align-items:center;padding:14px;border-radius:18px;background:linear-gradient(120deg,rgba(255,107,107,.22),rgba(255,214,102,.18),rgba(127,139,255,.22));border:1.5px solid rgba(255,230,160,.5);box-shadow:0 0 24px rgba(200,160,255,.25)}
+.tuArt{width:96px;flex:none}.tuArt .card{--w:96px}
+.tuTxt{display:flex;flex-direction:column;gap:4px;min-width:0}.tuTxt b{font-size:17px;color:var(--gold2)}.tuTxt small{color:var(--muted);font-size:12px}
+.btn.play.sm{font-size:16px;padding:.5em 1.2em;align-self:flex-start;margin-top:4px}
+.tutIntro .logo{margin-bottom:6px}
+@media (prefers-reduced-motion:reduce){ .upb,.hl,.coach{animation:none!important} .d10 .card{transition:none} }

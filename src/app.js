@@ -12,7 +12,7 @@ const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='le
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
 const KEY='lannasnap-v1';
 let user=null, prof=null;
-function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); const extra=PLAYABLE.filter(c=>!start.includes(c.id)&&!isDual(c)).sort(()=>Math.random()-.5).slice(0,6).map(c=>c.id); for(const id of start.concat(extra)) owned[id]={tier:0,boost:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1}; }
+function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,boost:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,tut:false,tutReward:false,firstTopup:false}; }
 function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1) return s; }catch(e){} return null; }
 async function saveProfile(){ try{ localStorage.setItem(KEY,JSON.stringify(prof)); }catch(e){} if(sb&&user){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
 async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data) return data.data; }catch(e){} return null; }
@@ -26,6 +26,7 @@ function closeModal(){ $('#modal').hidden=true; }
 $('#modal .mClose').onclick=closeModal; $('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
 
 /* ---------- card rendering ---------- */
+function canUp(id){ const o=prof&&prof.owned[id]; return !!o&&o.tier<6&&o.boost>=UP_BOOST[o.tier]&&prof.bia>=UP_BIA[o.tier]; }
 function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??def.power; const base=def.power;
   const provs=def.prov.map(p=>`<i style="--c:${PROV[p].col};--k:${PROV[p].ink}">${esc(L(PROV[p].ab))}</i>`).join('');
   const sts=o.status?Object.entries(o.status).map(([k])=>`<b class="${k}">${esc(L(STATUS[k]))}</b>`).join(''):'';
@@ -34,7 +35,7 @@ function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??d
     <div class="art"><img src="art/${def.id}.webp" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(160deg,${pc},#1a1222)'"></div><div class="frame"></div>
     <div class="cost${cost<def.cost?' up':''}">${cost}</div>${isPow?`<div class="pow${pw>base?' up':pw<base?' down':''}">${pw}</div>`:''}
     <div class="prov">${provs}</div>${o.small?'':`<span class="tp">${esc(L(TYPES[def.type]))}</span>`}${sts?`<div class="sts">${sts}</div>`:''}
-    <div class="nm"><span>${esc(L(def.name))}</span></div></div>`; }
+    <div class="nm"><span>${esc(L(def.name))}</span></div>${o.up?'<b class="upb">UP</b>':''}</div>`; }
 function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMatch=!$('#scrMatch').hidden; const tier=own&&!inMatch?own.tier:0;
   const nextB=UP_BOOST[tier], nextC=UP_BIA[tier];
   const up=own?(tier<6?`<div class="up"><div class="tiers">${TIERS.map((n,i)=>`<span class="${i<=tier?'on':''}">${i===tier?'●':'○'}</span>`).join('')}</div><div>ระดับ: <b>${TIERS[tier]}</b> → ${TIERS[tier+1]}</div><div class="bar"><i style="width:${Math.min(100,own.boost/nextB*100)}%"></i></div><small>บูสเตอร์ ${own.boost}/${nextB} · ใช้ ${nextC} เบี้ย</small><button class="btn primary" id="btnUp" type="button" ${own.boost>=nextB&&prof.bia>=nextC?'':'disabled'}>อัปเกรด</button></div>`:`<div class="up"><b>ระดับสูงสุด: ลายคำ ✦</b></div>`):(isDual(def)?`<p class="muted"><span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · หาได้จากซองการ์ดสุ่มเท่านั้น (โอกาส 2%)</p>`:`<p class="muted">ยังไม่ได้ปลดล็อก · ขึ้นระดับคอลเลกชัน ซื้อในร้าน หรือเปิดซองสุ่ม</p>`);
@@ -42,28 +43,28 @@ function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMa
   modal(`<div class="cardView">${cardHTML(def,{tier,cls:own?'':'unowned'})}<h3>${esc(L(def.name))}</h3>
     <div class="ab"><small>${isDual(def)?'<span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · ':''}${esc(L(TYPES[def.type]))} · ${def.prov.map(p=>esc(L(PROV[p].name))).join(' / ')}</small><br>${esc(L(def.text))}</div>
     <div class="lore"><b>เรื่องจริงหลังการ์ด</b><br>${esc(L(def.lore))}</div>${upHtml}</div>`,b=>{
-    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.boost-=nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); renderTop(); renderColl(); };
+    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.boost-=nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); renderTop(); renderColl(); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
     const cv=b.querySelector('.card'); if(tier>=3&&cv){ cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; cv.style.transform=`perspective(500px) rotateY(${x*18}deg) rotateX(${-y*18}deg)`; cv.querySelector('.art img').style.transform=`scale(1.15) translate(${-x*10}px,${-y*10}px)`; }); cv.addEventListener('pointerleave',()=>{ cv.style.transform=''; }); } }); }
 async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,boost:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
 
 /* ---------- home / deck / collection ---------- */
 function renderTop(){ if(!prof) return; $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
-function renderHome(){ renderTop(); $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier})).join(''); }
+function renderHome(){ renderTop(); $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier,up:canUp(id)})).join(''); }
 let fDeck='all', fColl='all';
 function filterBar(el,cur,set){ el.innerHTML=[['all','ทั้งหมด']].concat(Object.keys(PROV).map(k=>[k,L(PROV[k].ab)])).map(([k,n])=>`<button type="button" data-f="${k}" class="${k===cur?'on':''}">${n}</button>`).join(''); el.onclick=e=>{ const b=e.target.closest('[data-f]'); if(b) set(b.dataset.f); }; }
 function sortDefs(a,b){ return a.cost-b.cost||L(a.name).localeCompare(L(b.name),'th'); }
 function renderDeck(){ $('#deckCount').textContent=`${prof.deck.length}/12`;
-  $('#deckSlots').innerHTML=Array.from({length:12},(_,i)=>prof.deck[i]?cardHTML(CARDS[prof.deck[i]],{small:true,tier:prof.owned[prof.deck[i]]?.tier}):'<div class="slot"></div>').join('');
+  $('#deckSlots').innerHTML=Array.from({length:12},(_,i)=>prof.deck[i]?cardHTML(CARDS[prof.deck[i]],{small:true,tier:prof.owned[prof.deck[i]]?.tier,up:canUp(prof.deck[i])}):'<div class="slot"></div>').join('');
   filterBar($('#deckFilter'),fDeck,f=>{ fDeck=f; renderDeck(); });
   const pool=PLAYABLE.filter(c=>prof.owned[c.id]&&(fDeck==='all'||c.prov.includes(fDeck))).sort(sortDefs);
-  $('#deckPool').innerHTML=pool.map(c=>cardHTML(c,{tier:prof.owned[c.id].tier,cls:prof.deck.includes(c.id)?'dim':''})).join(''); }
+  $('#deckPool').innerHTML=pool.map(c=>cardHTML(c,{tier:prof.owned[c.id].tier,up:canUp(c.id),cls:prof.deck.includes(c.id)?'dim':''})).join(''); }
 $('#deckSlots').onclick=e=>{ const c=e.target.closest('.card'); if(!c) return; prof.deck.splice(prof.deck.indexOf(c.dataset.id),1); saveProfile(); renderDeck(); };
 $('#deckPool').onclick=e=>{ const c=e.target.closest('.card'); if(!c) return; const id=c.dataset.id; if(prof.deck.includes(id)) prof.deck.splice(prof.deck.indexOf(id),1); else if(prof.deck.length<12) prof.deck.push(id); else toast('เด็คเต็มแล้ว (12 ใบ)'); saveProfile(); renderDeck(); };
 $('#deckPool').oncontextmenu=e=>{ const c=e.target.closest('.card'); if(c){ e.preventDefault(); cardView(c.dataset.id); } };
 $('#btnAutoDeck').onclick=()=>{ const own=PLAYABLE.filter(c=>prof.owned[c.id]); const pick=[]; const want=[1,1,2,2,2,3,3,4,4,5,5,6]; for(const w of want){ const c=own.filter(x=>!pick.includes(x.id)).sort((a,b)=>Math.abs(a.cost-w)-Math.abs(b.cost-w)||Math.random()-.5)[0]; if(c) pick.push(c.id); } prof.deck=pick.slice(0,12); saveProfile(); renderDeck(); };
 function renderColl(){ const n=PLAYABLE.filter(c=>prof.owned[c.id]).length; $('#collCount').textContent=`${n}/${PLAYABLE.length} ใบ · ระดับ ${prof.cl}`; renderTop();
   filterBar($('#collFilter'),fColl,f=>{ fColl=f; renderColl(); });
-  $('#collGrid').innerHTML=PLAYABLE.filter(c=>fColl==='all'||c.prov.includes(fColl)).sort(sortDefs).map(c=>cardHTML(c,{tier:prof.owned[c.id]?.tier,cls:prof.owned[c.id]?'':'unowned'})).join(''); }
+  $('#collGrid').innerHTML=PLAYABLE.filter(c=>fColl==='all'||c.prov.includes(fColl)).sort(sortDefs).map(c=>cardHTML(c,{tier:prof.owned[c.id]?.tier,up:canUp(c.id),cls:prof.owned[c.id]?'':'unowned'})).join(''); }
 $('#collGrid').onclick=e=>{ const c=e.target.closest('.card'); if(c) cardView(c.dataset.id); };
 
 /* ---------- match ---------- */
@@ -76,11 +77,30 @@ function stakePick(){ if(prof.deck.length<12){ toast('จัดเด็คใ�
   modal(`<div class="result"><h2 style="font-size:28px">วางเดิมพัน</h2><p>ชนะได้ <b>เดิมพัน × แต้มคิวบ์</b> เบี้ย · แพ้เสียเท่ากัน<br><small class="muted">กดสแนปแล้วแต้มคูณสอง · ถอยก่อนเสียน้อยกว่า</small></p>
     <div class="stakes">${STAKES.map(s=>{ const ok=s===0||prof.bia>=s*2; return `<button class="stk${s===0?' free':''}" type="button" data-s="${s}" ${ok?'':'disabled'}><b>${s===0?'ซ้อมมือ':s}</b><small>${s===0?'ไม่เสียเบี้ย':`สูงสุด ±${s*8}`}</small></button>`; }).join('')}</div>
     <p class="muted">มีอยู่ ${prof.bia} เบี้ย · ต้องมีอย่างน้อย 2 เท่าของเดิมพัน</p></div>`,b=>{ b.querySelector('.stakes').onclick=e=>{ const k=e.target.closest('.stk'); if(!k||k.disabled) return; closeModal(); startMatch(+k.dataset.s); }; }); }
+const TUT_DECK=['rooster','carriage','bosang','teafarmer','bowlpainter','wualai','lampangluang','elephantlp','thipchang','horse','morhom','khanomjeen'];
+const TUT_AI=['langsat','saltmaker','coffeefarmer','fisher','silkweaver','kuptai','longan','phuean','hyacinth','namphi','rower','peacock'];
+function tutIntro(){ modal(`<div class="result tutIntro"><div class="logo sm"><span class="l1">ล้านนา</span><span class="l2">SNAP</span></div><h2 style="font-size:24px">ยินดีต้อนรับ!</h2><p>มาลองเล่นตาแรกด้วยกัน<br>เล่นจบรับ <b class="gain">การ์ดใหม่ 10 ใบ</b></p><div class="actions"><button class="btn end" id="tutGo" type="button">เริ่มสอนเล่น</button></div></div>`,b=>{ b.querySelector('#tutGo').onclick=()=>{ closeModal(); startTutorial(); }; }); }
+function startTutorial(){ S=newGame({seed:20261104,decks:[TUT_DECK.slice(),TUT_AI.slice()],noShuffle:[true,true],locs:['clocktower','kwanphayao','tonsakyai'],names:[prof.name,'ครูแก้ว (สอนเล่น)']}); S.stake=0; S.tut=true;
+  $('#oppName').textContent=S.players[1].name; show('scrMatch'); nextTurn(); }
+function coachMsg(){ const me=S.players[0]; const q=me.played.length; const hasTemple=me.hand.some(c=>c.def.type==='temple');
+  if(S.turn===1){ if(q) return ['กด <b>จบเทิร์น</b> การ์ดของทั้งสองฝ่ายจะเปิดพร้อมกัน','#btnEnd']; if(sel) return ['แตะ<b>สนาม</b>ที่อยากวาง (ช่องที่มีกรอบเหลือง)','.loc.target .side.me'];
+    return ['ชนะ <b>2 ใน 3 สนาม</b> คือชนะเกม · แตะการ์ดในมือ 1 ใบ<br><small>วงฟ้า = พลังงานที่ใช้ · หกเหลี่ยมส้ม = พลัง</small>','#hand']; }
+  if(S.turn===2) return [q?'ดีมาก! กดจบเทิร์นได้เลย':'พลังงานเพิ่มเทิร์นละ 1 · สนามไหนพลังรวมมากกว่า ฝ่ายนั้นชนะสนาม<br><small>ตัวเลขมุมขวาของสนาม: บน = คู่แข่ง, ล่าง = เรา</small>',q?'#btnEnd':'#board'];
+  if(S.turn===3) return ['แต่ละสนามมีกติกาพิเศษ อ่านใต้ชื่อสนาม · การ์ด ลป. ได้ +1 ที่ห้าแยกหอนาฬิกา (สนามบ้าน)<br><small>กดค้างที่การ์ดเพื่ออ่านความสามารถ</small>','.loc[data-li="0"] .tile'];
+  if(S.turn===4) return hasTemple&&!me.played.some(p=>p.li==='temple')?['ลอง<b>การ์ดวัด</b>! แตะ วัดพระธาตุลำปางหลวง แล้วแตะ <b>ช่องวัด</b> ด้านบน<br><small>การ์ด ลป. ทุกใบได้ +2 (ของคู่แข่งด้วย)</small>',sel&&sel.def.type==='temple'?'#templeSlot':'#hand']:['เยี่ยม! วัดอยู่จนกว่าจะมีวัดอื่นมาแทนที่','#btnEnd'];
+  if(S.turn===5) return [me.snapped?'สแนปแล้ว! เดิมพันจะคูณ 2':'มั่นใจว่าชนะ? กด <b>สแนป</b> เพื่อเพิ่มเดิมพันเป็น 2 เท่า<br><small>ถ้าดูท่าจะแพ้ กด "ถอย" จะเสียน้อยกว่า</small>',me.snapped?'#btnEnd':'#btnSnap'];
+  return ['เทิร์นสุดท้าย! ลงการ์ดให้คุ้มพลังงาน แล้วจบเทิร์น','#hand']; }
+function renderCoach(){ const box=$('#coach'); $$('.hl').forEach(x=>x.classList.remove('hl')); if(!S||!S.tut||S.over){ box.hidden=true; return; } const [m,target]=coachMsg(); box.innerHTML=`<span class="cAv">ครู</span><div>${m}</div>`; box.hidden=false; const t=$(target); if(t) t.classList.add('hl'); }
+async function tutReward(){ const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common').sort(()=>Math.random()-.5).slice(0,10);
+  for(const c of pool) prof.owned[c.id]={tier:0,boost:0}; prof.tutReward=true; await saveProfile();
+  modal(`<div class="result"><h2 style="font-size:26px">รางวัลจบบทสอน</h2><p>ได้การ์ดใหม่ ${pool.length} ใบ!</p><div class="draw10">${pool.map(c=>`<div class="d10">${cardHTML(c)}</div>`).join('')}</div><div class="actions"><button class="btn end" id="d10ok" type="button">ไปจัดเด็คกัน</button></div></div>`,b=>{
+    b.querySelectorAll('.d10').forEach((d,i)=>setTimeout(()=>{ d.classList.add('open'); const c=d.querySelector('.card'); FX.burst(c,PROV[CARDS[c.dataset.id].prov[0]].col,14); },300+i*180));
+    b.querySelector('#d10ok').onclick=()=>{ closeModal(); show('scrDeck'); toast('ใส่การ์ดใหม่ลงเด็คได้เลย หรือกด "จัดให้"',2200); }; }); }
 function startMatch(stake=0){ if(prof.deck.length<12){ toast('จัดเด็คให้ครบ 12 ใบก่อนนะ'); show('scrDeck'); return; }
   S=newGame({seed:(Math.random()*2**31)|0,decks:[prof.deck.slice(),aiDeck()],names:[prof.name,AI_NAMES[Math.floor(Math.random()*AI_NAMES.length)]+' (AI)']}); S.stake=stake;
   $('#oppName').textContent=S.players[1].name; show('scrMatch'); nextTurn(); }
-$('#btnPlay').onclick=stakePick;
-function nextTurn(){ applySnapsAtTurnStart(S); startTurn(S); if(aiShouldSnap(S,1)&&!S.players[1].snapped){ snap(S,1); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); },60); }
+$('#btnPlay').onclick=stakePick; $('#btnTut').onclick=startTutorial;
+function nextTurn(){ applySnapsAtTurnStart(S); startTurn(S); if(!S.tut&&aiShouldSnap(S,1)&&!S.players[1].snapped){ snap(S,1); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); },60); }
   if(S.turn<=3) setTimeout(()=>flashLoc(S.turn-1),200);
   sel=null; renderMatch(); }
 function flashLoc(li){ const el=$(`.loc[data-li="${li}"] .tile`); if(el){ el.classList.add('reveal'); setTimeout(()=>el.classList.remove('reveal'),1300); setTimeout(()=>FX.burst(el,PROV[S.locs[li].def.prov].col,22),350); } }
@@ -100,7 +120,7 @@ function renderMatch(hideUids){ const me=S.players[0];
       <div class="side me${cap>4?' cap5':''}">${mine.map(cd).join('')}${qd.map(c=>cardHTML(c.def,{small:true,uid:c.uid,cls:'queued',tier:0})).join('')}</div></div>`; }).join('');
   $('#hand').style.setProperty('--n',Math.max(me.hand.length,1)); $('#hand').innerHTML=me.hand.map(c=>cardHTML(c.def,{uid:c.uid,cost:cardCost(S,c),power:c.def.power+c.perm,tier:0,cls:(sel===c?'sel':'')+(cardCost(S,c)>me.energy?' dim':'')})).join('');
   $$('.loc').forEach(el=>el.classList.toggle('target',!!sel&&sel.def.type!=='temple'&&canPlay(S,0,sel,+el.dataset.li)));
-  $('#templeSlot').classList.toggle('target',!!sel&&sel.def.type==='temple'&&canPlay(S,0,sel,'temple')); }
+  $('#templeSlot').classList.toggle('target',!!sel&&sel.def.type==='temple'&&canPlay(S,0,sel,'temple')); renderCoach(); }
 $('#hand').addEventListener('click',e=>{ if(busy) return; const el=e.target.closest('.card'); if(!el) return; const c=S.players[0].hand.find(x=>x.uid==el.dataset.uid); if(!c) return; if(sel===c){ sel=null; renderMatch(); return; } sel=c; renderMatch(); if(cardCost(S,c)>S.players[0].energy) toast('พลังงานไม่พอ'); });
 $('#hand').addEventListener('contextmenu',e=>{ const el=e.target.closest('.card'); if(el){ e.preventDefault(); cardView(el.dataset.id); } });
 let pressT=null; document.addEventListener('pointerdown',e=>{ const el=e.target.closest('#scrMatch .card,#deckPool .card,#deckSlots .card'); if(!el) return; pressT=setTimeout(()=>{ pressT=null; cardView(el.dataset.id); },520); }); document.addEventListener('pointerup',()=>{ if(pressT){ clearTimeout(pressT); pressT=null; } });
@@ -115,17 +135,17 @@ $('#templeSlot').addEventListener('click',e=>{ if(busy) return; const q=e.target
 $('#btnSnap').onclick=()=>{ if(snap(S,0)){ toast('สแนป! เดิมพันเพิ่มเป็นสองเท่าตอนเริ่มเทิร์นหน้า'); renderMatch(); FX.shock('#a98bff'); pulseCubes(); } };
 $('#btnRetreat').onclick=()=>{ if(busy) return; modal(`<div class="result"><h2>ถอย?</h2><p>เสียเดิมพัน ${S.cubes} แต้ม${S.stake?` = ${Math.min(prof.bia,S.cubes*S.stake)} เบี้ย`:''} (ถ้าสู้ต่อแล้วแพ้จะเสียมากกว่านี้)</p><div class="actions"><button class="btn ghost" id="noR" type="button">สู้ต่อ</button><button class="btn end" id="yesR" type="button">ถอย</button></div></div>`,b=>{ b.querySelector('#noR').onclick=closeModal; b.querySelector('#yesR').onclick=()=>{ closeModal(); retreat(S,0); endMatch(); }; }); };
 $('#btnEnd').onclick=async()=>{ if(busy||S.over) return; busy=true; sel=null;
-  for(const {c,li} of aiPlan(S,1,aiLevel)) queuePlay(S,1,c,li);
+  for(const {c,li} of aiPlan(S,1,S.tut?0:aiLevel)) queuePlay(S,1,c,li);
   const queued=new Set([...S.players[0].played,...S.players[1].played].map(p=>p.c.uid));
   const ev=revealTurn(S);
   const hide=new Set(queued); renderMatch(hide);
   for(const e of ev){ if(e.k==='reveal'||e.k==='temple'){ hide.delete(e.uid); renderMatch(hide); const el=$(`[data-uid="${e.uid}"]`); if(el){ el.classList.add('pop'); const cc=allBoard(S).concat(S.temple?[S.temple]:[]).find(x=>x.uid==e.uid); setTimeout(()=>FX.burst(el,cc?PROV[cc.def.prov[0]].col:'#ffd98a',cc&&cc.def.cost>=5?30:16),180); if(cc&&cc.def.cost>=5) setTimeout(()=>FX.shake($('#board')),200); } if(e.k==='temple') setTimeout(()=>FX.rays($('#templeSlot')),150); if(e.k==='temple') toast(e.prev?`${L(S.temple.def.name)} เข้ามาแทนที่ บารมีวัดเดิมเลือนไป`:`${L(S.temple.def.name)} · การ์ด ${L(PROV[S.temple.def.temple].ab)} ทุกใบ +2`,1600); floats(e.log||[]); await wait(520); } else if(e.k==='endturn'){ renderMatch(); floats(e.log); await wait(300); } }
-  if(aiShouldRetreat(S,1)){ retreat(S,1); }
+  if(!S.tut&&aiShouldRetreat(S,1)){ retreat(S,1); }
   busy=false; if(S.over) endMatch(); else nextTurn(); };
 function floats(log){ for(const l of log){ const el=$(`[data-uid="${l.uid}"]`); if(!el) continue; const r=el.getBoundingClientRect(), a=$('#app').getBoundingClientRect(); const f=document.createElement('div'); f.className='fly'; f.style.left=(r.left-a.left+r.width/2-10)+'px'; f.style.top=(r.top-a.top)+'px';
     if(l.k==='buff'){ f.textContent=(l.n>0?'+':'')+l.n; f.style.color=l.n>0?'#9dffbf':'#ff9f9f'; if(l.n>0) FX.shimmer(el,'#9dffbf',6); else FX.shake(el); } else if(l.k==='status'){ f.textContent=L(STATUS[l.s]); f.style.color='#ffd06a'; f.style.fontSize='13px'; FX.burst(el,'#ffd06a',8); FX.shake(el); } else if(l.k==='block'){ f.textContent='กัน!'; f.style.color='#9fe3ff'; } else if(l.k==='move'){ f.textContent='ย้าย'; } else if(l.k==='vanish'){ f.textContent='✦'; } else continue;
     $('#app').appendChild(f); setTimeout(()=>f.remove(),950); } }
-async function endMatch(){ renderMatch(); const w=S.winner, ret=S.retreated; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
+async function endMatch(){ renderMatch(); if(S.tut){ return endTutorial(); } const w=S.winner, ret=S.retreated; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
   const win=w===0, draw=w===-1, stake=S.stake||0; let gained=0; const before=prof.bia;
   let delta=0; if(stake){ if(win) delta=stake*cubes; else if(!draw) delta=-Math.min(prof.bia,stake*cubes); delta+=5; } else delta=win?10:5;
   if(win){ prof.wins++; prof.cubes+=cubes; } else if(!draw){ prof.losses++; prof.cubes=Math.max(0,prof.cubes-cubes); }
@@ -139,6 +159,9 @@ async function endMatch(){ renderMatch(); const w=S.winner, ret=S.retreated; con
     <p>${money}</p><div class="biaBig"><span class="shell">◖</span><b id="resBia">${before}</b></div><p class="muted">บูสเตอร์ +${gained} (การ์ดที่ได้ลงสนาม)</p>
     <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">เล่นอีกตา</button></div></div>`,b=>{ FX.count(b.querySelector('#resBia'),before,prof.bia,1100); b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); stakePick(); }; }); }
 
+async function endTutorial(){ const win=S.winner===0; prof.tut=true; await saveProfile(); if(win){ FX.confetti(); FX.lanterns(10); }
+  modal(`<div class="result"><h2 class="${win?'win':''}">${win?'ชนะ!':'จบบทสอน'}</h2><p>${win?'เก่งมาก! พร้อมลุยแล้ว':'ไม่เป็นไร รู้วิธีเล่นแล้ว ลองอีกทีได้'}</p><p class="muted">สรุป: วางการ์ด · ชนะ 2 ใน 3 สนาม · วัดบัฟทั้งจังหวัด · สแนปเพิ่มเดิมพัน</p><div class="actions"><button class="btn end" id="tutRw" type="button">${prof.tutReward?'กลับหน้าหลัก':'รับรางวัล 10 ใบ'}</button></div></div>`,b=>{ b.querySelector('#tutRw').onclick=()=>{ if(prof.tutReward){ closeModal(); show('scrHome'); } else tutReward(); }; }); }
+
 /* ---------- shop & daily gift ---------- */
 function today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function hashStr(s){ let h=2166136261; for(const ch of s){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
@@ -149,6 +172,7 @@ function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textCont
   const offers=dailyOffers(); const lockedN=PLAYABLE.filter(c=>!prof.owned[c.id]).length;
   $('#shopBody').innerHTML=`
     <div class="gift${st.gift?' done':''}"><div><b>ของขวัญประจำวัน</b><small>${st.gift?'รับแล้ว กลับมาใหม่พรุ่งนี้':'รับเบี้ยฟรี 50 วันละครั้ง'}</small></div><button class="btn end" id="btnGift" type="button" ${st.gift?'disabled':''}>${st.gift?'รับแล้ว':'รับ 50'}</button></div>
+    ${prof.firstTopup?'':`<div class="topup"><div class="tuArt">${cardHTML(CARDS.mangrai,{tier:2})}</div><div class="tuTxt"><b>เติมเงินครั้งแรก</b><span>เติมเท่าไหร่ก็ได้ รับ <span class="rainbowTxt">พญามังราย</span> ระดับ ${TIERS[2]} (+2)</span><small>ครั้งเดียวต่อบัญชี</small><button class="btn play sm" id="btnTopup" type="button">เติมเงิน</button></div></div>`}
     <h4>การ์ดแนะนำวันนี้</h4>
     <div class="offers">${offers.length?offers.map(c=>{ const got=!!prof.owned[c.id]; return `<div class="offer${got?' sold':''}" data-id="${c.id}">${cardHTML(c,{cls:got?'':''})}<button class="buy" type="button" data-buy="${c.id}" ${got||prof.bia<priceOf(c)?'disabled':''}>${got?'ซื้อแล้ว':`<span class="shell">◖</span>${priceOf(c)}`}</button></div>`; }).join(''):'<p class="muted">คุณมีการ์ดครบทุกใบแล้ว</p>'}</div>
     <h4>ของอื่นๆ</h4>
@@ -165,18 +189,19 @@ function rollPack(){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]); const b
 function reward(def,label){ const rr=rarityOf(def); label=rr==='dual'?'✦ ตำนานสองแผ่นดิน! ✦':rr==='legend'?'ตำนาน!':label; modal(`<div class="cardView"><p class="rlabel ${rr}">${label}</p>${cardHTML(def)}<h3>${esc(L(def.name))}</h3><div class="ab">${esc(L(def.text))}</div><button class="btn end" id="okR" type="button">เยี่ยม!</button></div>`,b=>{ const c=b.querySelector('.card'); c.classList.add('pop'); setTimeout(()=>{ if(rr==='dual'){ ['#ff6b6b','#ffd166','#9dffbf','#7fc4ff','#c792ff'].forEach((col,i)=>setTimeout(()=>FX.burst(c,col,26),i*140)); FX.shock('#ffd98a'); FX.confetti(70); } else if(rr==='legend'){ FX.burst(c,'#ffd98a',40); FX.shimmer(c,'#ffe7a3',26); } else { FX.burst(c,PROV[def.prov[0]].col,30); FX.shimmer(c,'#ffe7a3',14); } },200); b.querySelector('#okR').onclick=closeModal; }); }
 $('#shopBody').addEventListener('click',async e=>{ const st=shopState();
   if(e.target.closest('#btnGift')){ if(st.gift) return; st.gift=true; const before=prof.bia; prof.bia+=50; await saveProfile(); renderShop(); FX.coins($('#btnGift')||$('#shopBody'),$('.biaMirror'),10); FX.count($('.biaMirror'),before,prof.bia,900); return; }
+  if(e.target.closest('#btnTopup')){ modal(`<div class="result"><h2 style="font-size:24px">เติมเงิน</h2><p>ระบบชำระเงินยังไม่เปิด<br><small class="muted">เปิดเมื่อเชื่อมช่องทางชำระเงินแล้ว เติมครั้งแรกจะได้พญามังราย (+2) ทันที</small></p><div class="actions"><button class="btn end" id="okT" type="button">รับทราบ</button></div></div>`,b=>{ b.querySelector('#okT').onclick=closeModal; }); return; }
   const by=e.target.closest('[data-buy]'); if(by&&!by.disabled){ const c=CARDS[by.dataset.buy]; const p=priceOf(c); if(prof.bia<p) return; confirmBuy(`ซื้อ ${esc(L(c.name))}?`,p,`<div class="cardView">${cardHTML(c)}</div>`,async()=>{ prof.owned[c.id]={tier:0,boost:0}; st.bought.push(c.id); reward(c,'ได้การ์ดใหม่!'); }); return; }
   if(e.target.closest('#btnPack')){ confirmBuy('ซองการ์ดสุ่ม?',PACK,'<p>เปิดได้การ์ดที่ยังไม่มี 1 ใบ<br><small class="muted">ทั่วไป 86% · ตำนาน 12% · สองแผ่นดิน 2% (การ์ดสองแผ่นดินหาได้จากซองนี้เท่านั้น)</small></p>',async()=>{ const c=rollPack(); prof.owned[c.id]={tier:0,boost:0}; reward(c,'เปิดซองได้…'); }); return; }
   if(e.target.closest('#btnBag')){ if(st.bags>=3) return; confirmBuy('ถุงบูสเตอร์?',BAG,'<p>การ์ดสุ่ม 3 ใบที่มี ได้ +3 บูสเตอร์</p>',async()=>{ st.bags++; const own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6).sort(()=>Math.random()-.5).slice(0,3); for(const id of own) prof.owned[id].boost+=3; modal(`<div class="result"><h2 style="font-size:24px">ได้บูสเตอร์!</h2><div class="deckStrip">${own.map(id=>cardHTML(CARDS[id],{small:true})).join('')}</div><p>${own.map(id=>esc(L(CARDS[id].name))).join(' · ')} +3</p><div class="actions"><button class="btn end" type="button" id="okB">ตกลง</button></div></div>`,b=>{ b.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>FX.burst(c,'#9dffbf',12),150+i*120)); b.querySelector('#okB').onclick=closeModal; }); }); return; }
   const of=e.target.closest('.offer .card'); if(of) cardView(of.dataset.id); });
 
 /* ---------- auth ---------- */
-async function enter(){ $('#scrLogin').hidden=true; show('scrHome'); }
+async function enter(){ $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); }
 $('#btnGuest').onclick=async()=>{ prof=loadLocal()||freshProfile(); await saveProfile(); enter(); };
 $('#btnGoogle').onclick=async()=>{ if(!sb){ $('#loginMsg').textContent='เชื่อมต่อระบบล็อกอินไม่ได้ ลองเล่นแบบผู้เยี่ยมชมก่อน'; return; }
   try{ const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}); if(error) $('#loginMsg').textContent='ล็อกอิน Google ยังไม่พร้อม: '+error.message; }catch(e){ $('#loginMsg').textContent='เปิดหน้าล็อกอินไม่ได้ในหน้านี้ ลองเปิดจากเว็บไซต์ของเกม'; } };
 $('#btnLogout').onclick=async()=>{ if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; $('#scrHome').hidden=true; $('#scrLogin').hidden=false; };
 (async()=>{ if(sb){ try{ const {data}=await sb.auth.getSession(); if(data&&data.session){ user=data.session.user; const cloud=await loadCloud(); prof=cloud||loadLocal()||freshProfile(); prof.name=(user.user_metadata&&(user.user_metadata.full_name||user.user_metadata.name))||prof.name; await saveProfile(); enter(); return; } }catch(e){} }
   $('#scrLogin').hidden=false; })();
-window.LS={get S(){return S;},get prof(){return prof;},startMatch,newGame,aiPlan,revealTurn,startTurn,queuePlay,finish};
+window.LS={startTutorial,tutReward,get S(){return S;},get prof(){return prof;},startMatch,newGame,aiPlan,revealTurn,startTurn,queuePlay,finish};
 })();
