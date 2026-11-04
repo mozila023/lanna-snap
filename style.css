@@ -505,3 +505,4 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .avOpt img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
 .avOpt.on,.avOpt:hover{border-color:var(--gold2);box-shadow:0 0 12px rgba(232,182,74,.7)}
 .topbar .whoBtn{flex-direction:row;align-items:center}
+.whoTxt>span,.whoTxt>small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
