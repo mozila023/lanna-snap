@@ -23,10 +23,11 @@ document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if
 const sfx=n=>{ try{ AUD.sfx(n); }catch(e){} };
 function toast(msg,ms=1400){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,ms); }
 function modal(html,onOpen){ $('#mBody').innerHTML=html; $('#modal').hidden=false; onOpen&&onOpen($('#mBody')); }
-function closeModal(){ $('#modal').hidden=true; }
+function closeModal(){ $('#modal').hidden=true; if(prof&&$('#scrMatch').hidden) refreshScreens(); }
 $('#modal .mClose').onclick=closeModal; $('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
 
 /* ---------- card rendering ---------- */
+function refreshScreens(){ renderTop(); if(!$('#scrHome').hidden) renderHome(); if(!$('#scrDeck').hidden) renderDeck(); if(!$('#scrColl').hidden) renderColl(); }
 function canUp(id){ const o=prof&&prof.owned[id]; return !!o&&o.tier<6&&(o.dup||0)>=UP_SPARE[o.tier]&&prof.bia>=UP_BIA[o.tier]; }
 function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??def.power; const base=def.power;
   const provs=def.prov.map(p=>`<i style="--c:${PROV[p].col};--k:${PROV[p].ink}">${esc(L(PROV[p].ab))}</i>`).join('');
@@ -44,7 +45,7 @@ function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMa
   modal(`<div class="cardView">${cardHTML(def,{tier,cls:own?'':'unowned'})}<h3>${esc(L(def.name))}</h3>
     <div class="ab"><small>${isDual(def)?'<span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · ':''}${esc(L(TYPES[def.type]))} · ${def.prov.map(p=>esc(L(PROV[p].name))).join(' / ')}</small><br>${esc(L(def.text))}</div>
     <div class="lore"><b>เรื่องจริงหลังการ์ด</b><br>${esc(L(def.lore))}</div>${upHtml}</div>`,b=>{
-    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.dup=(own.dup||0)-nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); renderTop(); renderColl(); sfx('upgrade'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
+    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.dup=(own.dup||0)-nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); refreshScreens(); sfx('upgrade'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
     const cv=b.querySelector('.card'); if(tier>=3&&cv){ cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; cv.style.transform=`perspective(500px) rotateY(${x*18}deg) rotateX(${-y*18}deg)`; cv.querySelector('.art img').style.transform=`scale(1.15) translate(${-x*10}px,${-y*10}px)`; }); cv.addEventListener('pointerleave',()=>{ cv.style.transform=''; }); } }); }
 async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,dup:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
 
