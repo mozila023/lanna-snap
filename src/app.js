@@ -21,8 +21,18 @@ async function loadCloud(){ // -> {status:'ok',data} | {status:'none'} | {status
   if(!sb||!user) return {status:'error'}; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(error) return {status:'error'}; const d=data&&data.data;
     if(d&&d.epoch===EPOCH&&(!d.uid||d.uid===user.id)) return {status:'ok',data:d}; return {status:'none'}; }catch(e){ return {status:'error'}; } }
 
+/* ---------- server economy (signed in): the server owns cowries, cards, spares, tiers and rank ---------- */
+let ECON=false;
+const ERR_TH={'not enough cowries':'เบี้ยไม่พอ','not enough spares':'อะไหล่ไม่พอ','gift already claimed today':'รับของขวัญวันนี้ไปแล้ว','daily limit reached':'ซื้อครบโควตาวันนี้แล้ว','already owned':'มีการ์ดนี้แล้ว',"card is not in today's shop":'การ์ดนี้ไม่ได้ขายวันนี้','reward already claimed':'รับรางวัลนี้ไปแล้ว','already max tier':'อัปเกรดสูงสุดแล้ว','card not owned':'ยังไม่มีการ์ดนี้','stake too high':'เบี้ยไม่พอสำหรับเดิมพันนี้','collection complete':'มีการ์ดครบทุกใบแล้ว','too many reports today':'รายงานครบจำนวนต่อวันแล้ว'};
+async function rpc(fn,args){ const {data,error}=await sb.rpc(fn,args||{}); if(error){ throw new Error(ERR_TH[error.message]||('เซิร์ฟเวอร์ไม่ยอมรับ: '+error.message)); } if(data&&data.owned) applyServer(data); return data; }
+function applyServer(s){ if(!prof||!s) return; Object.assign(prof,{bia:s.bia,rank:s.rank,wins:s.wins,losses:s.losses,cl:s.cl,tutReward:s.tutReward,firstTopup:s.firstTopup,owned:s.owned});
+  prof.shop={day:today(),ov:2,gift:!!s.shop.gift,bags:s.shop.bags||0,offers:s.shop.offers||null,bought:s.shop.bought||[]};
+  const ok=prof.deck.filter(id=>prof.owned[id]); if(ok.length!==prof.deck.length){ prof.deck=ok; for(const id of Object.keys(prof.owned)) if(prof.deck.length<12&&!prof.deck.includes(id)&&CARDS[id]) prof.deck.push(id); }
+  try{ localStorage.setItem(lkey(),JSON.stringify(prof)); }catch(e){} }
+async function startEcon(){ ECON=false; if(!sb||!user) return; try{ const {data,error}=await sb.rpc('init_account'); if(!error&&data&&data.owned){ ECON=true; applyServer(data); } else if(error) console.warn('server economy unavailable:',error.message); }catch(e){ console.warn('server economy unavailable',e); } }
+
 /* ---------- screens ---------- */
-function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop') renderShop(); if(id==='scrProfile') renderProfile(); }
+function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop'){ renderShop(); if(ECON&&!prof.shop.offers) rpc('shop_offers').then(()=>{ if(!$('#scrShop').hidden) renderShop(); }).catch(err=>toast(err.message)); } if(id==='scrProfile') renderProfile(); }
 document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) show(g.dataset.go); });
 const sfx=n=>{ try{ AUD.sfx(n); }catch(e){} };
 function toast(msg,ms=1400){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,ms); }
@@ -50,7 +60,7 @@ function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMa
   modal(`<div class="cardView">${cardHTML(def,{tier,cls:own?'':'unowned'})}<h3>${esc(L(def.name))}</h3>
     <div class="ab"><small>${isDual(def)?'<span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · ':''}${esc(L(TYPES[def.type]))} · ${def.prov.map(p=>esc(L(PROV[p].name))).join(' / ')}</small><br>${esc(L(def.text))}</div>
     <div class="lore"><b>เรื่องจริงหลังการ์ด</b><br>${esc(L(def.lore))}</div>${upHtml}</div>`,b=>{
-    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.dup=(own.dup||0)-nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); refreshScreens(); sfx('upgrade'); FX.banner(`${TIERS[own.tier]}!`,'up'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('evolve'); cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
+    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ btn.disabled=true; if(ECON){ try{ const d=await rpc('upgrade_card',{card_id:id}); if(d.unlocked) setTimeout(()=>toast(`ปลดล็อกการ์ดใหม่! ${L(CARDS[d.unlocked].name)}`,2200),600); }catch(err){ toast(err.message); sfx('error'); btn.disabled=false; return; } } else { own.dup=(own.dup||0)-nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); } const own2=prof.owned[id]; await saveProfile(); cardView(id); refreshScreens(); sfx('upgrade'); FX.banner(`${TIERS[own2.tier]}!`,'up'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('evolve'); cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
     const cv=b.querySelector('.card'); if(tier>=3&&cv){ cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; cv.style.transform=`perspective(500px) rotateY(${x*18}deg) rotateX(${-y*18}deg)`; cv.querySelector('.art img').style.transform=`scale(1.15) translate(${-x*10}px,${-y*10}px)`; }); cv.addEventListener('pointerleave',()=>{ cv.style.transform=''; }); } }); }
 async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common'); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,dup:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
 
@@ -100,8 +110,10 @@ function coachMsg(){ const me=S.players[ME]; const q=me.played.length; const has
   if(S.turn===5) return [me.snapped?'สแนปแล้ว! เดิมพันจะคูณ 2':'มั่นใจว่าชนะ? กด <b>สแนป</b> เพื่อเพิ่มเดิมพันเป็น 2 เท่า<br><small>ถ้าดูท่าจะแพ้ กด "ถอย" จะเสียน้อยกว่า</small>',me.snapped?'#btnEnd':'#btnSnap'];
   return ['เทิร์นสุดท้าย! ลงการ์ดให้คุ้มพลังงาน แล้วจบเทิร์น','#hand']; }
 function renderCoach(){ const box=$('#coach'); $$('.hl').forEach(x=>x.classList.remove('hl')); if(!S||!S.tut||S.over){ box.hidden=true; return; } const [m,target]=coachMsg(); box.innerHTML=`<span class="cAv">ครู</span><div>${m}</div>`; box.hidden=false; const t=$(target); if(t) t.classList.add('hl'); }
-async function tutReward(){ const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common').sort(()=>Math.random()-.5).slice(0,10);
-  for(const c of pool) prof.owned[c.id]={tier:0,dup:0}; prof.tutReward=true; await saveProfile();
+async function tutReward(){ let pool;
+  if(ECON){ try{ const d=await rpc('tutorial_reward'); pool=(d.got||[]).map(id=>CARDS[id]).filter(Boolean); }catch(err){ toast(err.message); closeModal(); show('scrHome'); return; } }
+  else { pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common').sort(()=>Math.random()-.5).slice(0,10); for(const c of pool) prof.owned[c.id]={tier:0,dup:0}; }
+  prof.tutReward=true; await saveProfile();
   modal(`<div class="result"><h2 style="font-size:26px">รางวัลจบบทสอน</h2><p>ได้การ์ดใหม่ ${pool.length} ใบ!</p><div class="draw10">${pool.map(c=>`<div class="d10">${cardHTML(c)}</div>`).join('')}</div><div class="actions"><button class="btn end" id="d10ok" type="button">ไปจัดเด็คกัน</button></div></div>`,b=>{
     sfx('pack'); b.querySelectorAll('.d10').forEach((d,i)=>setTimeout(()=>{ d.classList.add('open'); sfx('reveal'); const c=d.querySelector('.card'); FX.burst(c,PROV[CARDS[c.dataset.id].prov[0]].col,14); },300+i*180));
     b.querySelector('#d10ok').onclick=()=>{ closeModal(); show('scrDeck'); toast('ใส่การ์ดใหม่ลงเด็คได้เลย หรือกด "จัดให้"',2200); }; }); }
@@ -169,16 +181,19 @@ function floats(log){ for(const l of log){ const el=$(`[data-uid="${l.uid}"]`); 
 async function crowns(){ if(S.retreated!=null) return; for(let i=0;i<3;i++){ const w=locWinner(S,i); const el=$(`.loc[data-li="${i}"] .tile`); if(w===0||w===1){ FX.crown(el,w===ME); sfx(w===ME?'coin':'tap'); } await wait(380); } await wait(250); }
 async function endMatch(){ renderMatch(); FX.fireflies(false); netStopClock(); await crowns(); if(S.tut){ return endTutorial(); } if(S.net){ return endOnline(); } const w=S.winner, ret=S.retreated; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
   const win=w===ME, draw=w===-1, stake=S.stake||0; let gained=0; const before=prof.bia;
-  let delta=0; if(stake){ if(win) delta=stake*cubes; else if(!draw) delta=-Math.min(prof.bia,stake*cubes); delta+=5; } else delta=win?10:5;
-  if(win){ prof.wins++; prof.cubes+=cubes; } else if(!draw){ prof.losses++; prof.cubes=Math.max(0,prof.cubes-cubes); }
+  let delta=0, capped=false; if(stake){ if(win) delta=stake*cubes; else if(!draw) delta=-Math.min(prof.bia,stake*cubes); delta+=5; } else delta=win?10:5;
+  if(!ECON){ if(win){ prof.wins++; } else if(!draw){ prof.losses++; } }
   const playedIds=new Set(); for(const c of [...allBoard(S),...S.destroyed]) if(c.owner===ME) playedIds.add(c.def.id); if(S.temple&&S.temple.owner===ME) playedIds.add(S.temple.def.id);
-  const cand=[...playedIds].filter(id=>prof.owned[id]&&prof.owned[id].tier<6); let spareGot=null; if(cand.length&&(win||Math.random()<(draw?.5:.25))){ spareGot=cand[Math.floor(Math.random()*cand.length)]; prof.owned[spareGot].dup=(prof.owned[spareGot].dup||0)+1; gained=1; }
-  prof.bia=Math.max(0,prof.bia+delta); await saveProfile();
+  let spareGot=null;
+  if(ECON){ try{ const d=await rpc('ai_result',{outcome:win?1:draw?0:-1,stake,cubes,played:[...playedIds]}); delta=d.delta; spareGot=d.spare||null; capped=!!d.capped||(delta===0&&win); }catch(err){ toast(err.message,2400); delta=0; } }
+  else { const cand=[...playedIds].filter(id=>prof.owned[id]&&prof.owned[id].tier<6); if(cand.length&&(win||Math.random()<(draw?.5:.25))){ spareGot=cand[Math.floor(Math.random()*cand.length)]; prof.owned[spareGot].dup=(prof.owned[spareGot].dup||0)+1; } prof.bia=Math.max(0,prof.bia+delta); }
+  await saveProfile();
   const res=[0,1,2].map(i=>locWinner(S,i));
+  const capNote=capped?'<p class="muted">ถึงเพดานรางวัลจาก AI ของวันนี้แล้ว (400 เบี้ย) · ไปเล่นแมตช์แรงค์ต่อได้</p>':'';
   const money=stake?(win?`ได้เดิมพัน <b class="gain">+${stake*cubes}</b> เบี้ย`:draw?'เสมอ ได้เดิมพันคืน':`เสียเดิมพัน <b class="loss">${stake*cubes>before?'-'+before:'-'+stake*cubes}</b> เบี้ย`)+' · ค่าลงสนาม +5':`ซ้อมมือ · ได้ <b class="gain">+${delta}</b> เบี้ย`;
   if(win){ FX.confetti(); FX.lanterns(14); FX.fireworks(7); sfx('win'); } else if(!draw){ FX.shake($('#board')); sfx('lose'); }
   modal(`<div class="result"><h2 class="${win?'win':draw?'':'lose'}">${win?'ชนะ!':draw?'เสมอ':'แพ้'}</h2><p>${ret===ME?'คุณถอย':ret===OP?'คู่แข่งถอย!':`สนามที่ชนะ ${res.filter(x=>x===ME).length}/3`} · ${cubes} แต้มคิวบ์${stake?` × ${stake}`:''}</p>
-    <p>${money}</p><div class="biaBig"><span class="shell">◖</span><b id="resBia">${before}</b></div>${spareGot?`<div class="spareGot">${cardHTML(CARDS[spareGot],{small:true})}<span>ได้อะไหล่ <b>${esc(L(CARDS[spareGot].name))}</b> +1${canUp(spareGot)?' · <b class="loss">พร้อมอัป!</b>':''}</span></div>`:'<p class="muted">ตานี้ไม่ได้อะไหล่ · ชนะได้อะไหล่แน่นอน 1 ใบ</p>'}
+    <p>${money}</p>${capNote}<div class="biaBig"><span class="shell">◖</span><b id="resBia">${before}</b></div>${spareGot?`<div class="spareGot">${cardHTML(CARDS[spareGot],{small:true})}<span>ได้อะไหล่ <b>${esc(L(CARDS[spareGot].name))}</b> +1${canUp(spareGot)?' · <b class="loss">พร้อมอัป!</b>':''}</span></div>`:'<p class="muted">ตานี้ไม่ได้อะไหล่ · ชนะได้อะไหล่แน่นอน 1 ใบ</p>'}
     <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">เล่นอีกตา</button></div></div>`,b=>{ FX.count(b.querySelector('#resBia'),before,prof.bia,1100); b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); stakePick(); }; }); }
 
 async function endTutorial(){ const win=S.winner===ME; prof.tut=true; await saveProfile(); sfx(win?'win':'lose'); if(win){ FX.fireworks(5); FX.confetti(); FX.lanterns(10); }
@@ -259,6 +274,7 @@ function netBegin(){ if(NET.started) return; NET.started=true; closeModal(); con
   S=newGame({seed:NET.seed,decks:[hostP.deck.slice(0,12),guestP.deck.slice(0,12)],names:[hostP.name,guestP.name]}); S.stake=0; S.net=NET.kind;
   for(const [p,P] of [[0,hostP],[1,guestP]]){ const lk=new Set(P.lk||[]); for(const c of [...S.players[p].deck,...S.players[p].hand]) if(lk.has(c.def.id)){ c.perm+=MAX_BONUS; c.laikham=true; } }
   $('#oppName').innerHTML=`<span class="oppAv">${avatarOf(NET.opp.av,NET.opp.name)}</span>${esc(NET.opp.name)}${NET.kind==='ranked'?` <small class="oppRank" style="color:${rankOf(NET.opp.rank||0).c}">${rankOf(NET.opp.rank||0).n}</small>`:' <small class="oppRank">ห้องเพื่อน</small>'}`;
+  if(ECON){ const rb=document.createElement('button'); rb.className='mini rptMini'; rb.type='button'; rb.textContent='⚑'; rb.title='รายงานผู้เล่น'; const o=NET.opp, m=NET.matchId; rb.onclick=()=>reportPlayer(o,m); $('#oppName').appendChild(rb); }
   show('scrMatch'); matchMusic(); sfx('legend'); FX.banner(NET.kind==='ranked'?'แมตช์แรงค์!':'ห้องเพื่อน','loc'); setTimeout(nextTurn,900); }
 function netSend(ev,payload){ if(NET&&NET.ch) NET.ch.send({type:'broadcast',event:ev,payload}); }
 function netTurnStart(){ NET.myTurn=null; NET.oppTurn=NET.oppTurn&&NET.oppTurn.turn===S.turn?NET.oppTurn:null; NET.handOrder=S.players[ME].hand.map(c=>c.uid); netStartClock(); }
@@ -275,18 +291,37 @@ function netTryResolve(){ if(!NET||!NET.myTurn||!NET.oppTurn||!S||NET.oppTurn.tu
   const O=S.players[OP]; for(const [u,li] of t.plays){ const c=O.hand.find(x=>x.uid===u); if(!c||!queuePlay(S,OP,c,li)) console.warn('desync: opponent play rejected',u,li); }
   if(t.snap&&!O.snapped){ snap(S,OP); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); sfx('oppsnap'); },300); }
   $('#btnEnd').classList.remove('waiting'); busy=true; resolveTurn(); }
-function endOnline(){ const kind=S.net; const w=S.winner, ret=S.retreated; const win=w===ME, draw=w===-1; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
-  const before=prof.bia, beforeRank=prof.rank||0; let bia=0, rk=0;
-  if(kind==='ranked'){ bia=win?15:5; rk=win?cubes:draw?0:-cubes; prof.rank=Math.max(0,beforeRank+rk); if(win){ prof.wins++; } else if(!draw){ prof.losses++; } } else bia=5;
-  prof.bia+=bia; const playedIds=[...new Set([...allBoard(S),...S.destroyed].filter(c=>c.owner===ME).map(c=>c.def.id))].filter(id=>prof.owned[id]&&prof.owned[id].tier<6);
-  let spareGot=null; if(playedIds.length&&(win||Math.random()<.25)){ spareGot=playedIds[Math.floor(Math.random()*playedIds.length)]; prof.owned[spareGot].dup=(prof.owned[spareGot].dup||0)+1; }
-  saveProfile(); const n=NET; NET=null; if(n&&n.ch) setTimeout(()=>{ try{ sb.removeChannel(n.ch); }catch(e){} },1500);
-  const r0=rankOf(beforeRank), r1=rankOf(prof.rank||0);
+function finalHash(S){ const s=JSON.stringify([S.winner,S.retreated==null?-1:S.retreated,S.cubes,S.pendingSnap?1:0,S.temple?S.temple.uid:0,S.locs.map(l=>l.cards.map(side=>side.map(c=>[c.uid,cardPower(S,c)])))]); let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36)+'-'+s.length; }
+async function endOnline(){ const kind=S.net; const w=S.winner, ret=S.retreated; const win=w===ME, draw=w===-1; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
+  const before=prof.bia, beforeRank=prof.rank||0; const n=NET; NET=null; if(n&&n.ch) setTimeout(()=>{ try{ sb.removeChannel(n.ch); }catch(e){} },1500);
+  const opp=n&&n.opp, oppId=opp&&opp.id, mid=n&&n.matchId; let bia=0, rk=0, spareGot=null, pending=false;
+  if(kind==='ranked'&&ECON&&oppId){ pending=true; }
+  else if(kind==='ranked'){ bia=win?15:5; rk=win?cubes:draw?0:-cubes; prof.rank=Math.max(0,beforeRank+rk); if(win) prof.wins++; else if(!draw) prof.losses++; prof.bia+=bia; }
+  else if(!ECON){ bia=5; prof.bia+=bia; }
+  saveProfile();
   if(win){ FX.confetti(); FX.lanterns(14); FX.fireworks(7); sfx('win'); } else if(!draw){ FX.shake($('#board')); sfx('lose'); }
+  const rankBox=()=>{ const r1=rankOf(prof.rank||0), r0=rankOf(beforeRank); const d=(prof.rank||0)-beforeRank; return `<div class="rankBox" style="--rc:${r1.c}"><b>${r1.n}</b><span>${prof.rank||0} แต้ม <em class="${d>=0?'gain':'loss'}">${d>=0?'+':''}${d}</em></span><div class="rbar"><i style="width:${Math.round(r1.prog*100)}%"></i></div><small>${r1.next?`อีก ${r1.next.p-(prof.rank||0)} แต้มถึง ${r1.next.n}`:'อยู่บนยอดดอยแล้ว!'}</small></div>${r1.i>r0.i?'<p class="gain">ปีนขึ้นดอยใหม่แล้ว!</p>':''}`; };
   modal(`<div class="result"><h2 class="${win?'win':draw?'':'lose'}">${win?'ชนะ!':draw?'เสมอ':'แพ้'}</h2><p>${ret===ME?'คุณถอย':ret===OP?'คู่แข่งถอย!':`สนามที่ชนะ ${[0,1,2].filter(i=>locWinner(S,i)===ME).length}/3`} · ${cubes} แต้มคิวบ์</p>
-    ${kind==='ranked'?`<div class="rankBox" style="--rc:${r1.c}"><b>${r1.n}</b><span>${prof.rank} แต้ม <em class="${rk>=0?'gain':'loss'}">${rk>=0?'+':''}${rk}</em></span><div class="rbar"><i style="width:${Math.round(r1.prog*100)}%"></i></div><small>${r1.next?`อีก ${r1.next.p-prof.rank} แต้มถึง ${r1.next.n}`:'อยู่บนยอดดอยแล้ว!'}</small></div>${r1.i>r0.i?'<p class="gain">ปีนขึ้นดอยใหม่แล้ว!</p>':''}`:'<p class="muted">ห้องเพื่อน · ไม่นับแรงค์</p>'}
-    <p>ได้ <b class="gain">+${bia}</b> เบี้ย${spareGot?` · อะไหล่ <b>${esc(L(CARDS[spareGot].name))}</b> +1`:''}</p>
-    <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">${kind==='ranked'?'หาคู่ใหม่':'กลับหน้าหลัก'}</button></div></div>`,b=>{ b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); if(kind==='ranked') findRanked(); else show('scrHome'); }; }); }
+    <div id="onRes">${kind==='ranked'?(pending?'<div class="rankBox verifying"><b>กำลังยืนยันผลกับเซิร์ฟเวอร์…</b><small>รอคู่แข่งส่งผลมาให้ตรงกัน</small></div>':rankBox()+`<p>ได้ <b class="gain">+${bia}</b> เบี้ย</p>`):(ECON?'<p class="muted">ห้องเพื่อน · ไม่นับแรงค์ ไม่มีรางวัล</p>':`<p class="muted">ห้องเพื่อน · ไม่นับแรงค์</p><p>ได้ <b class="gain">+${bia}</b> เบี้ย</p>`)}</div>
+    ${ECON&&oppId?`<button class="mini rptBtn" id="rptOpp" type="button">⚑ รายงาน ${esc(cleanName(opp.name))}</button>`:''}
+    <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">${kind==='ranked'?'หาคู่ใหม่':'กลับหน้าหลัก'}</button></div></div>`,b=>{
+      b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); if(kind==='ranked') findRanked(); else show('scrHome'); };
+      const rb=b.querySelector('#rptOpp'); if(rb) rb.onclick=()=>reportPlayer(opp,mid); });
+  if(!pending) return;
+  const report={outcome:win?1:draw?0:-1,cubes,hash:finalHash(S),deck:n.me.deck.slice(0,12),lk:n.me.lk||[]};
+  const show2=(st)=>{ const box=$('#onRes'); if(!box) return; const delta=prof.bia-before;
+    if(st==='settled') box.innerHTML=rankBox()+`<p>ได้ <b class="gain">+${delta}</b> เบี้ย · ผลแมตช์ยืนยันแล้ว ✓</p>`;
+    else if(st==='mismatch') box.innerHTML='<div class="rankBox"><b class="loss">ผลไม่ตรงกัน</b><small>เซิร์ฟเวอร์ไม่นับแมตช์นี้ ทั้งสองฝ่ายไม่ได้ไม่เสียแต้ม</small></div>';
+    else box.innerHTML='<div class="rankBox"><b>คู่แข่งยังไม่ส่งผล</b><small>แมตช์นี้ยังไม่นับแรงค์ · ถ้าคู่แข่งส่งผลภายหลัง แต้มจะอัปเดตเอง</small></div>'; };
+  try{ let d=await rpc('report_ranked',{match_id:mid,opponent:oppId,report}); let st=d.match;
+    for(let k=0;k<12&&st==='waiting';k++){ await wait(2000); d=await rpc('match_status',{match_id:mid}); st=d.match; }
+    show2(st); if(st==='settled') sfx('coin'); }
+  catch(err){ const box=$('#onRes'); if(box) box.innerHTML=`<div class="rankBox"><b class="loss">ส่งผลไม่สำเร็จ</b><small>${esc(err.message)}</small></div>`; }
+  saveProfile(); renderTop(); }
+const REPORT_REASONS=['ชื่อไม่เหมาะสม','รูปโปรไฟล์ไม่เหมาะสม','สงสัยว่าโกง','อื่นๆ'];
+function reportPlayer(opp,mid){ if(!ECON||!opp) return; modal(`<div class="result"><h2 style="font-size:22px">รายงาน ${esc(cleanName(opp.name))}</h2><p class="muted">ทีมงานจะตรวจสอบ · ผู้ถูกรายงานจะไม่รู้ว่าใครรายงาน</p>
+    <div class="rptList">${REPORT_REASONS.map((r,i)=>`<button class="btn ghost" type="button" data-r="${i}">${r}</button>`).join('')}</div></div>`,b=>{
+    b.querySelector('.rptList').onclick=async e=>{ const k=e.target.closest('[data-r]'); if(!k) return; try{ await rpc('report_player',{target:opp.id,target_name:cleanName(opp.name),reason:REPORT_REASONS[+k.dataset.r],match_id:mid||null}); closeModal(); toast('ส่งรายงานแล้ว ขอบคุณครับ',2200); }catch(err){ toast(err.message); } }; }); }
 $('#btnRanked').onclick=()=>findRanked();
 $('#btnRoom').onclick=()=>roomMenu();
 
@@ -329,7 +364,7 @@ function today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1
 function hashStr(s){ let h=2166136261; for(const ch of s){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
 function shopState(){ if(!prof.shop||prof.shop.day!==today()) prof.shop={day:today(),bought:[],gift:false,bags:0}; return prof.shop; }
 const SHOP_LEGEND_CHANCE=0.05; // per slot: about 1 day in 5 shows a legend
-function dailyOffers(){ const st=shopState(); if(!st.offers||st.ov!==2){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)&&!(st.bought||[]).includes(c.id)); const rng=RNG(hashStr(today()+(user?user.id:'guest')+'v2'));
+function dailyOffers(){ const st=shopState(); if(ECON) return (st.offers||[]).map(id=>CARDS[id]).filter(Boolean); if(!st.offers||st.ov!==2){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)&&!(st.bought||[]).includes(c.id)); const rng=RNG(hashStr(today()+(user?user.id:'guest')+'v2'));
     const com=locked.filter(c=>rarityOf(c)==='common'), leg=locked.filter(c=>rarityOf(c)==='legend'); const out=(st.offers||[]).filter(id=>(st.bought||[]).includes(id));
     while(out.length<4&&(com.length||leg.length)){ const wantLeg=leg.length&&(rng()<SHOP_LEGEND_CHANCE||!com.length); const pool=wantLeg?leg:com; out.push(pool.splice(Math.floor(rng()*pool.length),1)[0].id); }
     st.offers=out; st.ov=2; } return st.offers.map(id=>CARDS[id]); }
@@ -354,18 +389,18 @@ function topupPopup(force){ if(prof.firstTopup||(!force&&topupHide())||!$('#moda
     const done=()=>{ if(b.querySelector('#tuHide')?.checked){ try{ localStorage.setItem('lannasnap-topup-hide',today()); }catch(e){} } };
     b.querySelector('#tuGo').onclick=()=>{ done(); closeModal(); show('scrShop'); };
     $('#modal').addEventListener('click',function once(e){ if(e.target.id==='modal'||e.target.closest('.mClose')){ done(); $('#modal').removeEventListener('click',once); } }); }); }
-function confirmBuy(title,price,html,fn){ modal(`<div class="result"><h2 style="font-size:24px">${title}</h2>${html||''}<p>ราคา <b>${price}</b> เบี้ย · คงเหลือหลังซื้อ ${prof.bia-price}</p><div class="actions"><button class="btn ghost" id="noB" type="button">ไม่ซื้อ</button><button class="btn end" id="yesB" type="button">ซื้อเลย</button></div></div>`,b=>{ b.querySelector('#noB').onclick=closeModal; b.querySelector('#yesB').onclick=async()=>{ const before=prof.bia; prof.bia-=price; await fn(); await saveProfile(); renderShop(); FX.count($('.biaMirror'),before,prof.bia,700); }; }); }
+function confirmBuy(title,price,html,fn){ modal(`<div class="result"><h2 style="font-size:24px">${title}</h2>${html||''}<p>ราคา <b>${price}</b> เบี้ย · คงเหลือหลังซื้อ ${prof.bia-price}</p><div class="actions"><button class="btn ghost" id="noB" type="button">ไม่ซื้อ</button><button class="btn end" id="yesB" type="button">ซื้อเลย</button></div></div>`,b=>{ b.querySelector('#noB').onclick=closeModal; b.querySelector('#yesB').onclick=async e=>{ e.target.disabled=true; const before=prof.bia; try{ if(!ECON) prof.bia-=price; await fn(); }catch(err){ if(ECON){ try{ await rpc('get_state'); }catch(e){} } else prof.bia=before; closeModal(); toast(err.message,2200); sfx('error'); renderShop(); return; } await saveProfile(); renderShop(); FX.count($('.biaMirror'),before,prof.bia,700); }; }); }
 function rollPack(){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]); const by=r=>locked.filter(c=>rarityOf(c)===r);
   const roll=Math.random()*100; let r=roll<RAR.dual.p?'dual':roll<RAR.dual.p+RAR.legend.p?'legend':'common';
   const order={common:['common','legend','dual'],legend:['legend','common','dual'],dual:['dual','legend','common']}[r];
   for(const k of order){ const p=by(k); if(p.length) return p[Math.floor(Math.random()*p.length)]; } const own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6&&CARDS[id]); return CARDS[own[Math.floor(Math.random()*own.length)]||'rooster']; }
 function reward(def,label){ const rr=rarityOf(def); sfx(rr==='common'?'pack':'legend'); label=rr==='dual'?'✦ ตำนานสองแผ่นดิน! ✦':rr==='legend'?'ตำนาน!':label; modal(`<div class="cardView"><p class="rlabel ${rr}">${label}</p>${cardHTML(def)}<h3>${esc(L(def.name))}</h3><div class="ab">${esc(L(def.text))}</div><button class="btn end" id="okR" type="button">เยี่ยม!</button></div>`,b=>{ const c=b.querySelector('.card'); c.classList.add('pop'); setTimeout(()=>{ if(rr==='dual'){ ['#ff6b6b','#ffd166','#9dffbf','#7fc4ff','#c792ff'].forEach((col,i)=>setTimeout(()=>FX.burst(c,col,26),i*140)); FX.shock('#ffd98a'); FX.confetti(70); } else if(rr==='legend'){ FX.burst(c,'#ffd98a',40); FX.shimmer(c,'#ffe7a3',26); } else { FX.burst(c,PROV[def.prov[0]].col,30); FX.shimmer(c,'#ffe7a3',14); } },200); b.querySelector('#okR').onclick=closeModal; }); }
 $('#shopBody').addEventListener('click',async e=>{ const st=shopState();
-  if(e.target.closest('#btnGift')){ if(st.gift) return; st.gift=true; const before=prof.bia; prof.bia+=50; await saveProfile(); renderShop(); sfx('coin'); setTimeout(()=>sfx('coin'),200); FX.coins($('#btnGift')||$('#shopBody'),$('.biaMirror'),10); FX.count($('.biaMirror'),before,prof.bia,900); return; }
+  if(e.target.closest('#btnGift')){ if(st.gift) return; const before=prof.bia; if(ECON){ try{ await rpc('claim_gift'); }catch(err){ toast(err.message); renderShop(); return; } } else { st.gift=true; prof.bia+=50; } await saveProfile(); renderShop(); sfx('coin'); setTimeout(()=>sfx('coin'),200); FX.coins($('#btnGift')||$('#shopBody'),$('.biaMirror'),10); FX.count($('.biaMirror'),before,prof.bia,900); return; }
   if(e.target.closest('#btnTopup')){ modal(`<div class="result"><h2 style="font-size:24px">เติมเงิน</h2><p>ระบบชำระเงินยังไม่เปิด<br><small class="muted">เปิดเมื่อเชื่อมช่องทางชำระเงินแล้ว เติมครั้งแรกจะได้พญามังราย (+2) ทันที</small></p><div class="actions"><button class="btn end" id="okT" type="button">รับทราบ</button></div></div>`,b=>{ b.querySelector('#okT').onclick=closeModal; }); return; }
-  const by=e.target.closest('[data-buy]'); if(by&&!by.disabled){ const c=CARDS[by.dataset.buy]; const p=priceOf(c); if(prof.bia<p) return; confirmBuy(`ซื้อ ${esc(L(c.name))}?`,p,`<div class="cardView">${cardHTML(c)}</div>`,async()=>{ prof.owned[c.id]={tier:0,dup:0}; st.bought.push(c.id); reward(c,'ได้การ์ดใหม่!'); }); return; }
-  if(e.target.closest('#btnPack')){ confirmBuy('ซองการ์ดสุ่ม?',PACK,'<p>เปิดได้การ์ดที่ยังไม่มี 1 ใบ<br><small class="muted">ทั่วไป 86% · ตำนาน 12% · สองแผ่นดิน 2% (การ์ดสองแผ่นดินหาได้จากซองนี้เท่านั้น)</small></p>',async()=>{ const c=rollPack(); if(prof.owned[c.id]){ prof.owned[c.id].dup=(prof.owned[c.id].dup||0)+2; reward(c,'มีครบแล้ว ได้อะไหล่ +2'); } else { prof.owned[c.id]={tier:0,dup:0}; reward(c,'เปิดซองได้…'); } }); return; }
-  if(e.target.closest('#btnBag')){ if(st.bags>=3) return; confirmBuy('ซองอะไหล่?',BAG,'<p>ได้อะไหล่ 3 ใบ ของการ์ดสุ่มที่คุณมี</p>',async()=>{ st.bags++; const own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6).sort(()=>Math.random()-.5).slice(0,3); for(const id of own) prof.owned[id].dup=(prof.owned[id].dup||0)+1; sfx('pack'); modal(`<div class="result"><h2 style="font-size:24px">ได้อะไหล่!</h2><div class="deckStrip">${own.map(id=>cardHTML(CARDS[id],{small:true,up:canUp(id)})).join('')}</div><p>${own.map(id=>esc(L(CARDS[id].name))).join(' · ')} +1</p><div class="actions"><button class="btn end" type="button" id="okB">ตกลง</button></div></div>`,b=>{ b.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>FX.burst(c,'#9dffbf',12),150+i*120)); b.querySelector('#okB').onclick=closeModal; }); }); return; }
+  const by=e.target.closest('[data-buy]'); if(by&&!by.disabled){ const c=CARDS[by.dataset.buy]; const p=priceOf(c); if(prof.bia<p) return; confirmBuy(`ซื้อ ${esc(L(c.name))}?`,p,`<div class="cardView">${cardHTML(c)}</div>`,async()=>{ if(ECON){ await rpc('buy_offer',{card_id:c.id}); } else { prof.owned[c.id]={tier:0,dup:0}; st.bought.push(c.id); } reward(c,'ได้การ์ดใหม่!'); }); return; }
+  if(e.target.closest('#btnPack')){ confirmBuy('ซองการ์ดสุ่ม?',PACK,'<p>เปิดได้การ์ดที่ยังไม่มี 1 ใบ<br><small class="muted">ทั่วไป 86% · ตำนาน 12% · สองแผ่นดิน 2% (การ์ดสองแผ่นดินหาได้จากซองนี้เท่านั้น)</small></p>',async()=>{ if(ECON){ const d=await rpc('buy_pack'); const c=CARDS[d.got]; reward(c,d.spares?'มีครบแล้ว ได้อะไหล่ +2':'เปิดซองได้…'); return; } const c=rollPack(); if(prof.owned[c.id]){ prof.owned[c.id].dup=(prof.owned[c.id].dup||0)+2; reward(c,'มีครบแล้ว ได้อะไหล่ +2'); } else { prof.owned[c.id]={tier:0,dup:0}; reward(c,'เปิดซองได้…'); } }); return; }
+  if(e.target.closest('#btnBag')){ if(st.bags>=3) return; confirmBuy('ซองอะไหล่?',BAG,'<p>ได้อะไหล่ 3 ใบ ของการ์ดสุ่มที่คุณมี</p>',async()=>{ let own; if(ECON){ const d=await rpc('buy_spares'); own=d.got||[]; } else { st.bags++; own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6).sort(()=>Math.random()-.5).slice(0,3); for(const id of own) prof.owned[id].dup=(prof.owned[id].dup||0)+1; } sfx('pack'); modal(`<div class="result"><h2 style="font-size:24px">ได้อะไหล่!</h2><div class="deckStrip">${own.map(id=>cardHTML(CARDS[id],{small:true,up:canUp(id)})).join('')}</div><p>${own.map(id=>esc(L(CARDS[id].name))).join(' · ')} +1</p><div class="actions"><button class="btn end" type="button" id="okB">ตกลง</button></div></div>`,b=>{ b.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>FX.burst(c,'#9dffbf',12),150+i*120)); b.querySelector('#okB').onclick=closeModal; }); }); return; }
   const of=e.target.closest('.offer .card'); if(of) cardView(of.dataset.id); });
 
 /* ---------- auth ---------- */
@@ -375,15 +410,15 @@ document.addEventListener('pointerdown',()=>{ try{ AUD.unlock(); }catch(e){} },{
 function soundBtns(){ const p=AUD.pref; $$('.btnMusic').forEach(b=>{ b.classList.toggle('off',!p.music); b.setAttribute('aria-pressed',p.music); }); $$('.btnSfx').forEach(b=>{ b.classList.toggle('off',!p.sfx); b.setAttribute('aria-pressed',p.sfx); }); }
 document.addEventListener('click',e=>{ if(e.target.closest('.btnMusic')){ AUD.setMusic(!AUD.pref.music); soundBtns(); if(AUD.pref.music&&AUD.current) toast('♪ '+AUD.current.th); } else if(e.target.closest('.btnSfx')){ AUD.setSfx(!AUD.pref.sfx); soundBtns(); sfx('tap'); } else if(e.target.closest('.btnNext')){ const t=AUD.shuffle(); if(t){ toast('♪ '+t.th); showTrack(t); } } });
 soundBtns();
-$('#btnGuest').onclick=async()=>{ user=null; cloudOK=false; prof=loadLocal()||freshProfile(); await saveProfile(); enter(); };
+$('#btnGuest').onclick=async()=>{ user=null; cloudOK=false; ECON=false; prof=loadLocal()||freshProfile(); await saveProfile(); enter(); };
 $('#btnGoogle').onclick=async()=>{ if(!sb){ $('#loginMsg').textContent='เชื่อมต่อระบบล็อกอินไม่ได้ ลองเล่นแบบผู้เยี่ยมชมก่อน'; return; }
   try{ const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}); if(error) $('#loginMsg').textContent='ล็อกอิน Google ยังไม่พร้อม: '+error.message; }catch(e){ $('#loginMsg').textContent='เปิดหน้าล็อกอินไม่ได้ในหน้านี้ ลองเปิดจากเว็บไซต์ของเกม'; } };
-$('#btnLogout').onclick=async()=>{ try{ if(NET) netAbort(); }catch(e){} if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; prof=null; cloudOK=false; $('#scrHome').hidden=true; $('#scrLogin').hidden=false; };
+$('#btnLogout').onclick=async()=>{ try{ if(NET) netAbort(); }catch(e){} if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; prof=null; cloudOK=false; ECON=false; $('#scrHome').hidden=true; $('#scrLogin').hidden=false; };
 (async()=>{ if(sb){ try{ const {data}=await sb.auth.getSession(); if(data&&data.session){ user=data.session.user; const cl=await loadCloud(); const gname=(user.user_metadata&&(user.user_metadata.full_name||user.user_metadata.name))||'ผู้เล่น';
       if(cl.status==='ok'){ prof=cl.data; cloudOK=true; }
       else if(cl.status==='none'){ prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=true; }
       else { prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=false; setTimeout(()=>toast('เชื่อมต่อคลาวด์ไม่ได้ · เซฟไว้ในเครื่องนี้ก่อน',2600),900); }
-      prof.uid=user.id; await saveProfile(); enter(); return; } }catch(e){} }
+      prof.uid=user.id; await startEcon(); await saveProfile(); enter(); return; } }catch(e){} }
   $('#scrLogin').hidden=false; })();
 window.LS={startTutorial,tutReward,get S(){return S;},get prof(){return prof;},startMatch,newGame,aiPlan,revealTurn,startTurn,queuePlay,finish};
 })();

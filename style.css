@@ -528,3 +528,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .pfRank{grid-column:span 4;flex-direction:row!important;justify-content:center;gap:10px!important;border:1.5px solid var(--rc)}
 .pfRank b{color:var(--rc)!important;font-family:var(--fb)!important}
 .onlineRow .btn{white-space:nowrap}
+.rankBox.verifying b{color:var(--gold2)}.rankBox.verifying{animation:breathe 1.6s ease-in-out infinite;border-color:var(--gold)}
+.rptBtn{display:block;margin:6px auto 0;color:var(--muted)}
+.rptMini{margin-left:6px;padding:.2em .5em;font-size:12px;color:var(--muted)}
+.rptList{display:flex;flex-direction:column;gap:8px;margin-top:10px}.rptList .btn{font-size:15px}
