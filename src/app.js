@@ -181,7 +181,11 @@ async function endTutorial(){ const win=S.winner===0; prof.tut=true; await saveP
 function today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
 function hashStr(s){ let h=2166136261; for(const ch of s){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
 function shopState(){ if(!prof.shop||prof.shop.day!==today()) prof.shop={day:today(),bought:[],gift:false,bags:0}; return prof.shop; }
-function dailyOffers(){ const st=shopState(); if(!st.offers){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); const rng=RNG(hashStr(today()+(user?user.id:'guest'))); const pool=locked.slice(); const out=[]; while(pool.length&&out.length<4) out.push(pool.splice(Math.floor(rng()*pool.length),1)[0].id); st.offers=out; } return st.offers.map(id=>CARDS[id]); }
+const SHOP_LEGEND_CHANCE=0.05; // per slot: about 1 day in 5 shows a legend
+function dailyOffers(){ const st=shopState(); if(!st.offers||st.ov!==2){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)&&!(st.bought||[]).includes(c.id)); const rng=RNG(hashStr(today()+(user?user.id:'guest')+'v2'));
+    const com=locked.filter(c=>rarityOf(c)==='common'), leg=locked.filter(c=>rarityOf(c)==='legend'); const out=(st.offers||[]).filter(id=>(st.bought||[]).includes(id));
+    while(out.length<4&&(com.length||leg.length)){ const wantLeg=leg.length&&(rng()<SHOP_LEGEND_CHANCE||!com.length); const pool=wantLeg?leg:com; out.push(pool.splice(Math.floor(rng()*pool.length),1)[0].id); }
+    st.offers=out; st.ov=2; } return st.offers.map(id=>CARDS[id]); }
 const priceOf=c=>80+c.cost*30+(c.type==='legend'?60:0); const PACK=150, BAG=60;
 function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textContent='ของในร้านเปลี่ยนทุกวัน';
   const offers=dailyOffers(); const lockedN=PLAYABLE.filter(c=>!prof.owned[c.id]).length;
