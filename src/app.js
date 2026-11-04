@@ -327,7 +327,7 @@ $('#btnRanked').onclick=()=>findRanked();
 $('#btnRoom').onclick=()=>roomMenu();
 
 /* ---------- donate to the creator (first donation: 1,000 cowries, granted by the creator after checking the slip) ---------- */
-const DONATE={ promptpay:'', name:'ผู้สร้าง Lanna Snap' }; // promptpay: phone (0812345678) or 13-digit ID
+const DONATE={ enabled:false, promptpay:'', name:'ผู้สร้าง Lanna Snap' }; // promptpay: phone (0812345678) or 13-digit ID
 const DONATE_BIA=1000;
 function ppPayload(id){ const d=String(id).replace(/\D/g,''); let acc; if(d.length===10&&d[0]==='0') acc='01'+'13'+('0066'+d.slice(1)); else if(d.length===13) acc='02'+'13'+d; else if(d.length===15) acc='03'+'15'+d; else return null;
   const f=(t,v)=>t+String(v.length).padStart(2,'0')+v; const mer=f('00','A000000677010111')+acc;
@@ -340,7 +340,7 @@ function copyText(text,el){ const done=()=>toast('คัดลอกแล้ว
 function slipJpeg(file){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const im=new Image(); im.onload=()=>{ const k=Math.min(1,1400/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); c.toBlob(bl=>bl?res(bl):rej(new Error('อ่านรูปไม่ได้')),'image/jpeg',.85); }; im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('ไฟล์นี้ไม่ใช่รูปภาพ')); }; im.src=url; }); }
 function donateCelebrate(before){ closeModal(); renderShop(); renderTop(); sfx('legend'); FX.confetti(90); FX.coins($('#shopBody')||$('#app'),$('.biaMirror')||$('#pBia'),14); toast(`ได้รับ ${DONATE_BIA.toLocaleString()} เบี้ยแล้ว ขอบคุณที่สนับสนุน!`,2800); FX.count($('.biaMirror'),before,prof.bia,1200); }
 const SLIP_TXT={pending:'⏳ ส่งสลิปแล้ว รอผู้สร้างตรวจ (ปกติไม่เกิน 1 วัน)',rejected:'❌ สลิปล่าสุดไม่ผ่านการตรวจ ส่งใหม่ได้',granted:'✅ ได้รับเบี้ยแล้ว ขอบคุณครับ'};
-function donateModal(){
+function donateModal(){ if(!DONATE.enabled) return;
   if(!user){ modal(`<div class="result"><h2 style="font-size:24px">โดเนทผู้สร้าง</h2><p>ล็อกอินด้วย Google ก่อน<br><small class="muted">เบี้ยจากการโดเนทจะเข้าบัญชีของคุณ ผู้เยี่ยมชมรับไม่ได้</small></p><div class="actions"><button class="btn end" id="okD" type="button">รับทราบ</button></div></div>`,b=>{ b.querySelector('#okD').onclick=closeModal; }); return; }
   const payload=DONATE.promptpay?ppPayload(DONATE.promptpay):null; const got=!!prof.firstTopup;
   modal(`<div class="result donate"><h2 style="font-size:24px">โดเนทผู้สร้าง</h2>
@@ -410,7 +410,7 @@ function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textCont
   const offers=dailyOffers(); const lockedN=PLAYABLE.filter(c=>!prof.owned[c.id]).length;
   $('#shopBody').innerHTML=`
     <div class="gift${st.gift?' done':''}"><div><b>ของขวัญประจำวัน</b><small>${st.gift?'รับแล้ว กลับมาใหม่พรุ่งนี้':'รับเบี้ยฟรี 50 วันละครั้ง'}</small></div><button class="btn end" id="btnGift" type="button" ${st.gift?'disabled':''}>${st.gift?'รับแล้ว':'รับ 50'}</button></div>
-    ${`<div class="topup big donateBan"><div class="tuShine"></div><div class="tuArt"><div class="biaCoin"><span class="shell">◖</span><b>${DONATE_BIA.toLocaleString()}</b><small>เบี้ย</small></div></div><div class="tuTxt"><span class="tuTag">${prof.firstTopup?'ขอบคุณที่สนับสนุน ❤':'ครั้งแรกเท่านั้น'}</span><b>โดเนทผู้สร้าง</b><span class="tuLine">${prof.firstTopup?'ช่วยให้เกมมีการ์ดใหม่ต่อไป':`โดเนทเท่าไหร่ก็ได้<br>รับ <b class="gain">${DONATE_BIA.toLocaleString()} เบี้ย</b> ไปสุ่มการ์ดเอง`}</span><span class="tuSub">ใช้ซื้อซองการ์ด อะไหล่ หรืออัปเกรดได้ตามใจ</span><button class="btn play" id="btnTopup" type="button">โดเนท</button></div></div>`}
+    ${!DONATE.enabled?'':`<div class="topup big donateBan"><div class="tuShine"></div><div class="tuArt"><div class="biaCoin"><span class="shell">◖</span><b>${DONATE_BIA.toLocaleString()}</b><small>เบี้ย</small></div></div><div class="tuTxt"><span class="tuTag">${prof.firstTopup?'ขอบคุณที่สนับสนุน ❤':'ครั้งแรกเท่านั้น'}</span><b>โดเนทผู้สร้าง</b><span class="tuLine">${prof.firstTopup?'ช่วยให้เกมมีการ์ดใหม่ต่อไป':`โดเนทเท่าไหร่ก็ได้<br>รับ <b class="gain">${DONATE_BIA.toLocaleString()} เบี้ย</b> ไปสุ่มการ์ดเอง`}</span><span class="tuSub">ใช้ซื้อซองการ์ด อะไหล่ หรืออัปเกรดได้ตามใจ</span><button class="btn play" id="btnTopup" type="button">โดเนท</button></div></div>`}
     <h4>การ์ดแนะนำวันนี้</h4>
     <div class="offers">${offers.length?offers.map(c=>{ const got=!!prof.owned[c.id]; return `<div class="offer${got?' sold':''}" data-id="${c.id}">${cardHTML(c,{cls:got?'':''})}<button class="buy" type="button" data-buy="${c.id}" ${got||prof.bia<priceOf(c)?'disabled':''}>${got?'ซื้อแล้ว':`<span class="shell">◖</span>${priceOf(c)}`}</button></div>`; }).join(''):'<p class="muted">คุณมีการ์ดครบทุกใบแล้ว</p>'}</div>
     <h4>ของอื่นๆ</h4>
@@ -420,7 +420,7 @@ function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textCont
     </div>
     <p class="muted">เบี้ยเป็นเงินในเกมเท่านั้น ได้จากการเล่นและของขวัญรายวัน</p>`; }
 function topupHide(){ try{ return localStorage.getItem('lannasnap-topup-hide')===today(); }catch(e){ return false; } }
-function topupPopup(force){ if(prof.firstTopup||(!force&&topupHide())||!$('#modal').hidden) return;
+function topupPopup(force){ if(!DONATE.enabled||prof.firstTopup||(!force&&topupHide())||!$('#modal').hidden) return;
   modal(`<div class="tuPop"><div class="tuGlow"></div><p class="tuKick">โดเนทผู้สร้าง</p><div class="tuBig"><div class="biaCoin big"><span class="shell">◖</span><b>${DONATE_BIA.toLocaleString()}</b><small>เบี้ย</small></div></div><h2>สนับสนุนล้านนาสแนป</h2><p>โดเนทเท่าไหร่ก็ได้ ครั้งแรกรับ <b class="gain">${DONATE_BIA.toLocaleString()} เบี้ย</b><br><small class="muted">เอาไปสุ่มซองการ์ดเองได้เลย</small></p><button class="btn play" id="tuGo" type="button">ดูวิธีโดเนท</button><label class="tuHide"><input type="checkbox" id="tuHide"> ไม่แสดงอีกวันนี้</label></div>`,b=>{
     const c=b.querySelector('.tuBig .biaCoin'); c.classList.add('pop'); setTimeout(()=>{ FX.burst(c,'#ffd98a',30); FX.shimmer(c,'#ffe7a3',16); },250); sfx('coin');
     const done=()=>{ if(b.querySelector('#tuHide')?.checked){ try{ localStorage.setItem('lannasnap-topup-hide',today()); }catch(e){} } };
