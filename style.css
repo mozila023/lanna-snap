@@ -323,3 +323,9 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .card .pow.lk{background:radial-gradient(circle at 40% 30%,#fff1b0,#d99a1f);color:#3a1d06;text-shadow:none}
 .card.lkc .pow.up{background:radial-gradient(circle at 40% 30%,#fff1b0,#d99a1f);color:#3a1d06;text-shadow:none}
 .up .gain{font-weight:600}
+.spares{display:flex;flex-wrap:wrap;gap:4px}
+.spares i{width:18px;height:24px;border-radius:4px;border:1.5px dashed #6a5a7a;background:rgba(255,255,255,.04)}
+.spares i.on{border:1.5px solid var(--gold);background:url(art/cardback.webp) center/cover;box-shadow:0 0 8px rgba(232,182,74,.5)}
+.spareGot{display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;border-radius:12px;background:rgba(95,211,138,.1);border:1px solid rgba(95,211,138,.35);margin:6px 0}
+.spareGot .card{--w:42px}
+.gIcon.bag::after{content:"×3"}

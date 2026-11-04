@@ -6,13 +6,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const SUPA={url:'https://gfhetnzcmoagbbjxmgyd.supabase.co',key:'sb_publishable_i7VWQb9gWnZAE8NWNNDDWQ_55xVgDUj'};
 let sb=null; try{ if(window.supabase) sb=window.supabase.createClient(SUPA.url,SUPA.key); }catch(e){ sb=null; }
 const TIERS=['ธรรมดา','กรอบผ้าทอ','ทะลุกรอบ','ภาพนูน','เรืองแสง','ทองคำเปลว','ลายคำ'];
-const UP_BOOST=[5,10,20,30,40,100], UP_BIA=[25,100,200,300,400,1500]; const MAX_BONUS=2; // only the final tier (ลายคำ) adds power
+const UP_SPARE=[1,2,3,4,5,8], UP_BIA=[25,100,200,300,400,1500]; const MAX_BONUS=2; // only the final tier (ลายคำ) adds power
 const PLAYABLE=C.filter(c=>!c.token);
 const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='legend'?'legend':'common';
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
 const KEY='lannasnap-v1';
 let user=null, prof=null;
-function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,boost:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,tut:false,tutReward:false,firstTopup:false}; }
+function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,tut:false,tutReward:false,firstTopup:false}; }
 function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1) return s; }catch(e){} return null; }
 async function saveProfile(){ try{ localStorage.setItem(KEY,JSON.stringify(prof)); }catch(e){} if(sb&&user){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
 async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data) return data.data; }catch(e){} return null; }
@@ -27,7 +27,7 @@ function closeModal(){ $('#modal').hidden=true; }
 $('#modal .mClose').onclick=closeModal; $('#modal').addEventListener('click',e=>{ if(e.target.id==='modal') closeModal(); });
 
 /* ---------- card rendering ---------- */
-function canUp(id){ const o=prof&&prof.owned[id]; return !!o&&o.tier<6&&o.boost>=UP_BOOST[o.tier]&&prof.bia>=UP_BIA[o.tier]; }
+function canUp(id){ const o=prof&&prof.owned[id]; return !!o&&o.tier<6&&(o.dup||0)>=UP_SPARE[o.tier]&&prof.bia>=UP_BIA[o.tier]; }
 function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??def.power; const base=def.power;
   const provs=def.prov.map(p=>`<i style="--c:${PROV[p].col};--k:${PROV[p].ink}">${esc(L(PROV[p].ab))}</i>`).join('');
   const sts=o.status?Object.entries(o.status).map(([k])=>`<b class="${k}">${esc(L(STATUS[k]))}</b>`).join(''):'';
@@ -38,15 +38,15 @@ function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??d
     <div class="prov">${provs}</div>${o.small?'':`<span class="tp">${esc(L(TYPES[def.type]))}</span>`}${sts?`<div class="sts">${sts}</div>`:''}
     <div class="nm"><span>${esc(L(def.name))}</span></div>${o.up?'<b class="upb">UP</b>':''}</div>`; }
 function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMatch=!$('#scrMatch').hidden; const tier=own&&!inMatch?own.tier:0;
-  const nextB=UP_BOOST[tier], nextC=UP_BIA[tier];
-  const up=own?(tier<6?`<div class="up"><div class="tiers">${TIERS.map((n,i)=>`<span class="${i<=tier?'on':''}">${i===tier?'●':'○'}</span>`).join('')}</div><div>ระดับ: <b>${TIERS[tier]}</b> → ${TIERS[tier+1]}${tier===5?' <b class="gain">· พลัง +2 ในสนาม</b>':''}</div>${tier===5?'<small class="muted">ขั้นสุดท้าย ใช้บูสเตอร์และเบี้ยมาก แต่การ์ดได้พลัง +2 ทุกตา</small>':''}<div class="bar"><i style="width:${Math.min(100,own.boost/nextB*100)}%"></i></div><small>บูสเตอร์ ${own.boost}/${nextB} · ใช้ ${nextC} เบี้ย</small><button class="btn primary" id="btnUp" type="button" ${own.boost>=nextB&&prof.bia>=nextC?'':'disabled'}>อัปเกรด</button></div>`:`<div class="up"><b>ระดับสูงสุด: ลายคำ ✦</b><span class="gain">พลัง +2 ทุกครั้งที่ลงสนาม</span></div>`):(isDual(def)?`<p class="muted"><span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · หาได้จากซองการ์ดสุ่มเท่านั้น (โอกาส 2%)</p>`:`<p class="muted">ยังไม่ได้ปลดล็อก · ขึ้นระดับคอลเลกชัน ซื้อในร้าน หรือเปิดซองสุ่ม</p>`);
+  const nextB=UP_SPARE[tier], nextC=UP_BIA[tier]; const dup=own?(own.dup||0):0;
+  const up=own?(tier<6?`<div class="up"><div class="tiers">${TIERS.map((n,i)=>`<span class="${i<=tier?'on':''}">${i===tier?'●':'○'}</span>`).join('')}</div><div>ระดับ: <b>${TIERS[tier]}</b> → ${TIERS[tier+1]}${tier===5?' <b class="gain">· พลัง +2 ในสนาม</b>':''}</div>${tier===5?'<small class="muted">ขั้นสุดท้าย ใช้อะไหล่และเบี้ยมาก แต่การ์ดได้พลัง +2 ทุกตา</small>':''}<div class="spares">${Array.from({length:nextB},(_,i)=>`<i class="${i<dup?'on':''}"></i>`).join('')}</div><small>อะไหล่ (การ์ดใบซ้ำ) <b>${dup}/${nextB}</b> ใบ · ใช้ ${nextC} เบี้ย${dup>nextB?` · เหลือเก็บ ${dup-nextB}`:''}</small><button class="btn primary" id="btnUp" type="button" ${dup>=nextB&&prof.bia>=nextC?'':'disabled'}>อัปเกรด</button></div>`:`<div class="up"><b>ระดับสูงสุด: ลายคำ ✦</b><span class="gain">พลัง +2 ทุกครั้งที่ลงสนาม</span></div>`):(isDual(def)?`<p class="muted"><span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · หาได้จากซองการ์ดสุ่มเท่านั้น (โอกาส 2%)</p>`:`<p class="muted">ยังไม่ได้ปลดล็อก · ขึ้นระดับคอลเลกชัน ซื้อในร้าน หรือเปิดซองสุ่ม</p>`);
   const upHtml=inMatch?'':up;
   modal(`<div class="cardView">${cardHTML(def,{tier,cls:own?'':'unowned'})}<h3>${esc(L(def.name))}</h3>
     <div class="ab"><small>${isDual(def)?'<span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · ':''}${esc(L(TYPES[def.type]))} · ${def.prov.map(p=>esc(L(PROV[p].name))).join(' / ')}</small><br>${esc(L(def.text))}</div>
     <div class="lore"><b>เรื่องจริงหลังการ์ด</b><br>${esc(L(def.lore))}</div>${upHtml}</div>`,b=>{
-    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.boost-=nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); renderTop(); renderColl(); sfx('upgrade'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
+    const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.dup=(own.dup||0)-nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); renderTop(); renderColl(); sfx('upgrade'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
     const cv=b.querySelector('.card'); if(tier>=3&&cv){ cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; cv.style.transform=`perspective(500px) rotateY(${x*18}deg) rotateX(${-y*18}deg)`; cv.querySelector('.art img').style.transform=`scale(1.15) translate(${-x*10}px,${-y*10}px)`; }); cv.addEventListener('pointerleave',()=>{ cv.style.transform=''; }); } }); }
-async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,boost:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
+async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,dup:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
 
 /* ---------- home / deck / collection ---------- */
 function renderTop(){ if(!prof) return; $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
@@ -95,7 +95,7 @@ function coachMsg(){ const me=S.players[0]; const q=me.played.length; const hasT
   return ['เทิร์นสุดท้าย! ลงการ์ดให้คุ้มพลังงาน แล้วจบเทิร์น','#hand']; }
 function renderCoach(){ const box=$('#coach'); $$('.hl').forEach(x=>x.classList.remove('hl')); if(!S||!S.tut||S.over){ box.hidden=true; return; } const [m,target]=coachMsg(); box.innerHTML=`<span class="cAv">ครู</span><div>${m}</div>`; box.hidden=false; const t=$(target); if(t) t.classList.add('hl'); }
 async function tutReward(){ const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common').sort(()=>Math.random()-.5).slice(0,10);
-  for(const c of pool) prof.owned[c.id]={tier:0,boost:0}; prof.tutReward=true; await saveProfile();
+  for(const c of pool) prof.owned[c.id]={tier:0,dup:0}; prof.tutReward=true; await saveProfile();
   modal(`<div class="result"><h2 style="font-size:26px">รางวัลจบบทสอน</h2><p>ได้การ์ดใหม่ ${pool.length} ใบ!</p><div class="draw10">${pool.map(c=>`<div class="d10">${cardHTML(c)}</div>`).join('')}</div><div class="actions"><button class="btn end" id="d10ok" type="button">ไปจัดเด็คกัน</button></div></div>`,b=>{
     sfx('pack'); b.querySelectorAll('.d10').forEach((d,i)=>setTimeout(()=>{ d.classList.add('open'); sfx('reveal'); const c=d.querySelector('.card'); FX.burst(c,PROV[CARDS[c.dataset.id].prov[0]].col,14); },300+i*180));
     b.querySelector('#d10ok').onclick=()=>{ closeModal(); show('scrDeck'); toast('ใส่การ์ดใหม่ลงเด็คได้เลย หรือกด "จัดให้"',2200); }; }); }
@@ -159,13 +159,13 @@ async function endMatch(){ renderMatch(); FX.fireflies(false); await crowns(); i
   let delta=0; if(stake){ if(win) delta=stake*cubes; else if(!draw) delta=-Math.min(prof.bia,stake*cubes); delta+=5; } else delta=win?10:5;
   if(win){ prof.wins++; prof.cubes+=cubes; } else if(!draw){ prof.losses++; prof.cubes=Math.max(0,prof.cubes-cubes); }
   const playedIds=new Set(); for(const c of [...allBoard(S),...S.destroyed]) if(c.owner===0) playedIds.add(c.def.id); if(S.temple&&S.temple.owner===0) playedIds.add(S.temple.def.id);
-  for(const id of playedIds){ if(prof.owned[id]){ const n=win?2:1; prof.owned[id].boost+=n; gained+=n; } }
+  const cand=[...playedIds].filter(id=>prof.owned[id]&&prof.owned[id].tier<6); let spareGot=null; if(cand.length&&(win||Math.random()<(draw?.5:.25))){ spareGot=cand[Math.floor(Math.random()*cand.length)]; prof.owned[spareGot].dup=(prof.owned[spareGot].dup||0)+1; gained=1; }
   prof.bia=Math.max(0,prof.bia+delta); await saveProfile();
   const res=[0,1,2].map(i=>locWinner(S,i));
   const money=stake?(win?`ได้เดิมพัน <b class="gain">+${stake*cubes}</b> เบี้ย`:draw?'เสมอ ได้เดิมพันคืน':`เสียเดิมพัน <b class="loss">${stake*cubes>before?'-'+before:'-'+stake*cubes}</b> เบี้ย`)+' · ค่าลงสนาม +5':`ซ้อมมือ · ได้ <b class="gain">+${delta}</b> เบี้ย`;
   if(win){ FX.confetti(); FX.lanterns(14); FX.fireworks(7); sfx('win'); } else if(!draw){ FX.shake($('#board')); sfx('lose'); }
   modal(`<div class="result"><h2 class="${win?'win':draw?'':'lose'}">${win?'ชนะ!':draw?'เสมอ':'แพ้'}</h2><p>${ret===0?'คุณถอย':ret===1?'คู่แข่งถอย!':`สนามที่ชนะ ${res.filter(x=>x===0).length}/3`} · ${cubes} แต้มคิวบ์${stake?` × ${stake}`:''}</p>
-    <p>${money}</p><div class="biaBig"><span class="shell">◖</span><b id="resBia">${before}</b></div><p class="muted">บูสเตอร์ +${gained} (การ์ดที่ได้ลงสนาม)</p>
+    <p>${money}</p><div class="biaBig"><span class="shell">◖</span><b id="resBia">${before}</b></div>${spareGot?`<div class="spareGot">${cardHTML(CARDS[spareGot],{small:true})}<span>ได้อะไหล่ <b>${esc(L(CARDS[spareGot].name))}</b> +1${canUp(spareGot)?' · <b class="loss">พร้อมอัป!</b>':''}</span></div>`:'<p class="muted">ตานี้ไม่ได้อะไหล่ · ชนะได้อะไหล่แน่นอน 1 ใบ</p>'}
     <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">เล่นอีกตา</button></div></div>`,b=>{ FX.count(b.querySelector('#resBia'),before,prof.bia,1100); b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); stakePick(); }; }); }
 
 async function endTutorial(){ const win=S.winner===0; prof.tut=true; await saveProfile(); sfx(win?'win':'lose'); if(win){ FX.fireworks(5); FX.confetti(); FX.lanterns(10); }
@@ -176,7 +176,7 @@ function today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1
 function hashStr(s){ let h=2166136261; for(const ch of s){ h^=ch.charCodeAt(0); h=Math.imul(h,16777619); } return h>>>0; }
 function shopState(){ if(!prof.shop||prof.shop.day!==today()) prof.shop={day:today(),bought:[],gift:false,bags:0}; return prof.shop; }
 function dailyOffers(){ const st=shopState(); if(!st.offers){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); const rng=RNG(hashStr(today()+(user?user.id:'guest'))); const pool=locked.slice(); const out=[]; while(pool.length&&out.length<4) out.push(pool.splice(Math.floor(rng()*pool.length),1)[0].id); st.offers=out; } return st.offers.map(id=>CARDS[id]); }
-const priceOf=c=>80+c.cost*30+(c.type==='legend'?60:0); const PACK=150, BAG=40;
+const priceOf=c=>80+c.cost*30+(c.type==='legend'?60:0); const PACK=150, BAG=60;
 function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textContent='ของในร้านเปลี่ยนทุกวัน';
   const offers=dailyOffers(); const lockedN=PLAYABLE.filter(c=>!prof.owned[c.id]).length;
   $('#shopBody').innerHTML=`
@@ -186,8 +186,8 @@ function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textCont
     <div class="offers">${offers.length?offers.map(c=>{ const got=!!prof.owned[c.id]; return `<div class="offer${got?' sold':''}" data-id="${c.id}">${cardHTML(c,{cls:got?'':''})}<button class="buy" type="button" data-buy="${c.id}" ${got||prof.bia<priceOf(c)?'disabled':''}>${got?'ซื้อแล้ว':`<span class="shell">◖</span>${priceOf(c)}`}</button></div>`; }).join(''):'<p class="muted">คุณมีการ์ดครบทุกใบแล้ว</p>'}</div>
     <h4>ของอื่นๆ</h4>
     <div class="goods">
-      <div class="good"><div class="gIcon pack"></div><div><b>ซองการ์ดสุ่ม</b><small>ได้การ์ดที่ยังไม่มี 1 ใบ · เหลือ ${lockedN} ใบ</small><small class="rates">ทั่วไป ${RAR.common.p}% · ตำนาน ${RAR.legend.p}% · <span class="rainbowTxt">สองแผ่นดิน ${RAR.dual.p}%</span></small></div><button class="buy" type="button" id="btnPack" ${lockedN&&prof.bia>=PACK?'':'disabled'}><span class="shell">◖</span>${PACK}</button></div>
-      <div class="good"><div class="gIcon bag"></div><div><b>ถุงบูสเตอร์</b><small>+3 บูสเตอร์ ให้การ์ดสุ่ม 3 ใบที่มี · วันละ 3 ถุง (${st.bags}/3)</small></div><button class="buy" type="button" id="btnBag" ${st.bags<3&&prof.bia>=BAG?'':'disabled'}><span class="shell">◖</span>${BAG}</button></div>
+      <div class="good"><div class="gIcon pack"></div><div><b>ซองการ์ดสุ่ม</b><small>ได้การ์ดที่ยังไม่มี 1 ใบ · เหลือ ${lockedN} ใบ</small><small class="rates">ทั่วไป ${RAR.common.p}% · ตำนาน ${RAR.legend.p}% · <span class="rainbowTxt">สองแผ่นดิน ${RAR.dual.p}%</span></small></div><button class="buy" type="button" id="btnPack" ${prof.bia>=PACK?'':'disabled'}><span class="shell">◖</span>${PACK}</button></div>
+      <div class="good"><div class="gIcon bag"></div><div><b>ซองอะไหล่</b><small>ได้อะไหล่ (การ์ดใบซ้ำ) 3 ใบ ของการ์ดสุ่มที่มี · วันละ 3 ซอง (${st.bags}/3)</small></div><button class="buy" type="button" id="btnBag" ${st.bags<3&&prof.bia>=BAG?'':'disabled'}><span class="shell">◖</span>${BAG}</button></div>
     </div>
     <p class="muted">เบี้ยเป็นเงินในเกมเท่านั้น ได้จากการเล่นและของขวัญรายวัน</p>`; }
 function topupHide(){ try{ return localStorage.getItem('lannasnap-topup-hide')===today(); }catch(e){ return false; } }
@@ -201,18 +201,19 @@ function confirmBuy(title,price,html,fn){ modal(`<div class="result"><h2 style="
 function rollPack(){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]); const by=r=>locked.filter(c=>rarityOf(c)===r);
   const roll=Math.random()*100; let r=roll<RAR.dual.p?'dual':roll<RAR.dual.p+RAR.legend.p?'legend':'common';
   const order={common:['common','legend','dual'],legend:['legend','common','dual'],dual:['dual','legend','common']}[r];
-  for(const k of order){ const p=by(k); if(p.length) return p[Math.floor(Math.random()*p.length)]; } return locked[0]; }
+  for(const k of order){ const p=by(k); if(p.length) return p[Math.floor(Math.random()*p.length)]; } const own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6&&CARDS[id]); return CARDS[own[Math.floor(Math.random()*own.length)]||'rooster']; }
 function reward(def,label){ const rr=rarityOf(def); sfx(rr==='common'?'pack':'legend'); label=rr==='dual'?'✦ ตำนานสองแผ่นดิน! ✦':rr==='legend'?'ตำนาน!':label; modal(`<div class="cardView"><p class="rlabel ${rr}">${label}</p>${cardHTML(def)}<h3>${esc(L(def.name))}</h3><div class="ab">${esc(L(def.text))}</div><button class="btn end" id="okR" type="button">เยี่ยม!</button></div>`,b=>{ const c=b.querySelector('.card'); c.classList.add('pop'); setTimeout(()=>{ if(rr==='dual'){ ['#ff6b6b','#ffd166','#9dffbf','#7fc4ff','#c792ff'].forEach((col,i)=>setTimeout(()=>FX.burst(c,col,26),i*140)); FX.shock('#ffd98a'); FX.confetti(70); } else if(rr==='legend'){ FX.burst(c,'#ffd98a',40); FX.shimmer(c,'#ffe7a3',26); } else { FX.burst(c,PROV[def.prov[0]].col,30); FX.shimmer(c,'#ffe7a3',14); } },200); b.querySelector('#okR').onclick=closeModal; }); }
 $('#shopBody').addEventListener('click',async e=>{ const st=shopState();
   if(e.target.closest('#btnGift')){ if(st.gift) return; st.gift=true; const before=prof.bia; prof.bia+=50; await saveProfile(); renderShop(); sfx('coin'); setTimeout(()=>sfx('coin'),200); FX.coins($('#btnGift')||$('#shopBody'),$('.biaMirror'),10); FX.count($('.biaMirror'),before,prof.bia,900); return; }
   if(e.target.closest('#btnTopup')){ modal(`<div class="result"><h2 style="font-size:24px">เติมเงิน</h2><p>ระบบชำระเงินยังไม่เปิด<br><small class="muted">เปิดเมื่อเชื่อมช่องทางชำระเงินแล้ว เติมครั้งแรกจะได้พญามังราย (+2) ทันที</small></p><div class="actions"><button class="btn end" id="okT" type="button">รับทราบ</button></div></div>`,b=>{ b.querySelector('#okT').onclick=closeModal; }); return; }
-  const by=e.target.closest('[data-buy]'); if(by&&!by.disabled){ const c=CARDS[by.dataset.buy]; const p=priceOf(c); if(prof.bia<p) return; confirmBuy(`ซื้อ ${esc(L(c.name))}?`,p,`<div class="cardView">${cardHTML(c)}</div>`,async()=>{ prof.owned[c.id]={tier:0,boost:0}; st.bought.push(c.id); reward(c,'ได้การ์ดใหม่!'); }); return; }
-  if(e.target.closest('#btnPack')){ confirmBuy('ซองการ์ดสุ่ม?',PACK,'<p>เปิดได้การ์ดที่ยังไม่มี 1 ใบ<br><small class="muted">ทั่วไป 86% · ตำนาน 12% · สองแผ่นดิน 2% (การ์ดสองแผ่นดินหาได้จากซองนี้เท่านั้น)</small></p>',async()=>{ const c=rollPack(); prof.owned[c.id]={tier:0,boost:0}; reward(c,'เปิดซองได้…'); }); return; }
-  if(e.target.closest('#btnBag')){ if(st.bags>=3) return; confirmBuy('ถุงบูสเตอร์?',BAG,'<p>การ์ดสุ่ม 3 ใบที่มี ได้ +3 บูสเตอร์</p>',async()=>{ st.bags++; const own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6).sort(()=>Math.random()-.5).slice(0,3); for(const id of own) prof.owned[id].boost+=3; modal(`<div class="result"><h2 style="font-size:24px">ได้บูสเตอร์!</h2><div class="deckStrip">${own.map(id=>cardHTML(CARDS[id],{small:true})).join('')}</div><p>${own.map(id=>esc(L(CARDS[id].name))).join(' · ')} +3</p><div class="actions"><button class="btn end" type="button" id="okB">ตกลง</button></div></div>`,b=>{ b.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>FX.burst(c,'#9dffbf',12),150+i*120)); b.querySelector('#okB').onclick=closeModal; }); }); return; }
+  const by=e.target.closest('[data-buy]'); if(by&&!by.disabled){ const c=CARDS[by.dataset.buy]; const p=priceOf(c); if(prof.bia<p) return; confirmBuy(`ซื้อ ${esc(L(c.name))}?`,p,`<div class="cardView">${cardHTML(c)}</div>`,async()=>{ prof.owned[c.id]={tier:0,dup:0}; st.bought.push(c.id); reward(c,'ได้การ์ดใหม่!'); }); return; }
+  if(e.target.closest('#btnPack')){ confirmBuy('ซองการ์ดสุ่ม?',PACK,'<p>เปิดได้การ์ดที่ยังไม่มี 1 ใบ<br><small class="muted">ทั่วไป 86% · ตำนาน 12% · สองแผ่นดิน 2% (การ์ดสองแผ่นดินหาได้จากซองนี้เท่านั้น)</small></p>',async()=>{ const c=rollPack(); if(prof.owned[c.id]){ prof.owned[c.id].dup=(prof.owned[c.id].dup||0)+2; reward(c,'มีครบแล้ว ได้อะไหล่ +2'); } else { prof.owned[c.id]={tier:0,dup:0}; reward(c,'เปิดซองได้…'); } }); return; }
+  if(e.target.closest('#btnBag')){ if(st.bags>=3) return; confirmBuy('ซองอะไหล่?',BAG,'<p>ได้อะไหล่ 3 ใบ ของการ์ดสุ่มที่คุณมี</p>',async()=>{ st.bags++; const own=Object.keys(prof.owned).filter(id=>prof.owned[id].tier<6).sort(()=>Math.random()-.5).slice(0,3); for(const id of own) prof.owned[id].dup=(prof.owned[id].dup||0)+1; sfx('pack'); modal(`<div class="result"><h2 style="font-size:24px">ได้อะไหล่!</h2><div class="deckStrip">${own.map(id=>cardHTML(CARDS[id],{small:true,up:canUp(id)})).join('')}</div><p>${own.map(id=>esc(L(CARDS[id].name))).join(' · ')} +1</p><div class="actions"><button class="btn end" type="button" id="okB">ตกลง</button></div></div>`,b=>{ b.querySelectorAll('.card').forEach((c,i)=>setTimeout(()=>FX.burst(c,'#9dffbf',12),150+i*120)); b.querySelector('#okB').onclick=closeModal; }); }); return; }
   const of=e.target.closest('.offer .card'); if(of) cardView(of.dataset.id); });
 
 /* ---------- auth ---------- */
-async function enter(){ $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); else setTimeout(topupPopup,700); setTimeout(()=>{ if(AUD.current) toast('♪ '+AUD.current.th,1800); },600); }
+function migrate(){ for(const id in prof.owned){ const o=prof.owned[id]; if(o.dup===undefined){ o.dup=Math.floor((o.boost||0)/5); delete o.boost; } } }
+async function enter(){ migrate(); $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); else setTimeout(topupPopup,700); setTimeout(()=>{ if(AUD.current) toast('♪ '+AUD.current.th,1800); },600); }
 document.addEventListener('pointerdown',()=>{ try{ AUD.unlock(); }catch(e){} },{once:false,passive:true});
 function soundBtns(){ const p=AUD.pref; $$('.btnMusic').forEach(b=>{ b.classList.toggle('off',!p.music); b.setAttribute('aria-pressed',p.music); }); $$('.btnSfx').forEach(b=>{ b.classList.toggle('off',!p.sfx); b.setAttribute('aria-pressed',p.sfx); }); }
 document.addEventListener('click',e=>{ if(e.target.closest('.btnMusic')){ AUD.setMusic(!AUD.pref.music); soundBtns(); if(AUD.pref.music&&AUD.current) toast('♪ '+AUD.current.th); } else if(e.target.closest('.btnSfx')){ AUD.setSfx(!AUD.pref.sfx); soundBtns(); sfx('tap'); } else if(e.target.closest('.btnNext')){ const t=AUD.shuffle(); if(t){ toast('♪ '+t.th); showTrack(t); } } });
