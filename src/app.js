@@ -5,7 +5,7 @@ const L=x=>x?(x.th??x):''; const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&a
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const SUPA={url:'https://gfhetnzcmoagbbjxmgyd.supabase.co',key:'sb_publishable_i7VWQb9gWnZAE8NWNNDDWQ_55xVgDUj'};
 let sb=null; try{ if(window.supabase) sb=window.supabase.createClient(SUPA.url,SUPA.key); }catch(e){ sb=null; }
-const TIERS=['ธรรมดา','กรอบผ้าทอ','ทะลุกรอบ','ภาพนูน','เรืองแสง','ทองคำเปลว','ลายคำ'];
+const TIERS=['ธรรมดา','กรอบผ้าทอ','ประกายดาว','ภาพนูน','เรืองแสง','ทองคำเปลว','ลายคำ'];
 const UP_SPARE=[1,2,3,4,5,8], UP_BIA=[25,100,200,300,400,1500]; const MAX_BONUS=2; // only the final tier (ลายคำ) adds power
 const PLAYABLE=C.filter(c=>!c.token);
 const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='legend'?'legend':'common';
