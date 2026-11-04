@@ -35,7 +35,7 @@ function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??d
   const isPow=def.type!=='temple'; const cost=o.cost??def.cost; const lk=(o.tier||0)>=6&&isPow&&o.power==null;
   const tk=o.tier||0; const tcl=Array.from({length:tk},(_,i)=>' t'+(i+1)).join('');
   return `<div class="card${tcl}${isDual(def)?' dual':''}${o.small?' small':''}${o.cls?' '+o.cls:''}" data-id="${def.id}"${o.uid?` data-uid="${o.uid}"`:''} data-t="${o.tier||0}" style="--pc:${pc}">
-    <div class="art"><img src="art/${def.id}.webp" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(160deg,${pc},#1a1222)'"></div><div class="frame"></div>
+    <div class="art">${tk>=2?'<i class="twk"></i>':''}<img src="art/${def.id}.webp" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(160deg,${pc},#1a1222)'"></div><div class="frame"></div>
     <div class="cost${cost<def.cost?' up':''}">${cost}</div>${isPow?`<div class="pow${lk?' lk':pw>base?' up':pw<base?' down':''}">${lk?pw+MAX_BONUS:pw}</div>`:''}
     <div class="prov">${provs}</div>${o.small?'':`<span class="tp">${esc(L(TYPES[def.type]))}</span>`}${sts?`<div class="sts">${sts}</div>`:''}
     <div class="nm"><span>${esc(L(def.name))}</span></div>${tk?`<div class="pips">${'<i></i>'.repeat(tk)}</div>`:''}${o.up?'<b class="upb">UP</b>':''}</div>`; }
