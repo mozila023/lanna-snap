@@ -21,7 +21,7 @@
     </div>
   </section>
   <section id="scrHome" class="scr" hidden>
-    <header class="topbar"><div class="who"><span id="pName">ผู้เล่น</span><small id="pCL">ระดับคอลเลกชัน 1</small></div><div class="bia" title="เบี้ย"><span class="shell">◖</span><b id="pBia">0</b></div><div class="snd"><button class="mini btnMusic" type="button" aria-label="เปิด/ปิดเพลง">♪</button><button class="mini btnNext" type="button" aria-label="เปลี่ยนเพลง">⟳</button><button class="mini btnSfx" type="button" aria-label="เปิด/ปิดเสียงเอฟเฟกต์">🔊</button></div><button id="btnLogout" class="mini" type="button">ออก</button></header>
+    <header class="topbar"><button class="who whoBtn" id="btnProfile" type="button" aria-label="โปรไฟล์ผู้เล่น"><span class="av" id="pAv"></span><span class="whoTxt"><span id="pName">ผู้เล่น</span><small id="pCL">ระดับคอลเลกชัน 1</small></span></button><div class="bia" title="เบี้ย"><span class="shell">◖</span><b id="pBia">0</b></div><div class="snd"><button class="mini btnMusic" type="button" aria-label="เปิด/ปิดเพลง">♪</button><button class="mini btnNext" type="button" aria-label="เปลี่ยนเพลง">⟳</button><button class="mini btnSfx" type="button" aria-label="เปิด/ปิดเสียงเอฟเฟกต์">🔊</button></div><button id="btnLogout" class="mini" type="button">ออก</button></header>
     <div class="homeHero">
       <div class="logo sm"><span class="l1">ล้านนา</span><span class="l2">SNAP</span></div>
       <div id="homeDeckPreview" class="deckStrip"></div>
@@ -41,6 +41,10 @@
     <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>คอลเลกชัน</span><small id="collCount"></small></div><div class="bia"><span class="shell">◖</span><b class="biaMirror">0</b></div></header>
     <div id="collFilter" class="filters"></div>
     <div id="collGrid" class="grid"></div>
+  </section>
+  <section id="scrProfile" class="scr" hidden>
+    <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>โปรไฟล์ผู้เล่น</span><small id="profSub"></small></div></header>
+    <div id="profBody" class="profile"></div>
   </section>
   <section id="scrShop" class="scr" hidden>
     <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>กาดล้านนา · ร้านค้า</span><small id="shopDay"></small></div><div class="bia"><span class="shell">◖</span><b class="biaMirror">0</b></div></header>

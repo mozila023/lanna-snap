@@ -472,3 +472,36 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .card.t6::after{inset:-23.27% -20.56% -18.26% -20.56%}
 .mClose{z-index:10}
 .homeMini{display:flex;gap:8px}
+/* ---------- player profile ---------- */
+.whoBtn{display:flex;align-items:center;gap:10px;border:0;background:none;padding:0;text-align:left;cursor:pointer;flex:1;min-width:0}
+.whoTxt{display:flex;flex-direction:column;min-width:0}.whoTxt small{color:var(--muted);font-size:11px}
+.av{width:38px;height:38px;flex:none;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:linear-gradient(135deg,var(--gold),#8a5a12);box-shadow:0 0 0 2px var(--gold2),0 0 10px rgba(232,182,74,.5)}
+.av img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}.av b{font-size:18px;color:#2a1806}
+.profile{flex:1;overflow-y:auto;padding:16px 16px 28px;display:flex;flex-direction:column;gap:14px}
+.profile > *{flex-shrink:0}
+.pfHead{display:flex;gap:16px;align-items:center}
+.pfAv{position:relative;width:104px;height:104px;flex:none;border-radius:50%;overflow:hidden;border:0;padding:0;display:grid;place-items:center;background:linear-gradient(135deg,var(--gold),#8a5a12);box-shadow:0 0 0 3px var(--gold2),0 0 24px rgba(232,182,74,.55);cursor:pointer}
+.pfAv img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}.pfAv b{font-size:44px;color:#2a1806}
+.pfCam{position:absolute;left:0;right:0;bottom:0;padding:4px 0 8px;font-size:11px;background:rgba(10,6,16,.7);color:var(--gold2)}
+.pfName{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.pfLbl{font-size:12px;color:var(--muted)}
+.pfRow{display:flex;gap:8px}
+.pfRow input{flex:1;min-width:0;font:inherit;font-size:17px;color:var(--ink);background:rgba(255,255,255,.06);border:1.5px solid #5a4a6a;border-radius:12px;padding:.5em .7em}
+.pfRow input:focus{outline:none;border-color:var(--gold)}
+.btn.sm{font-size:14px;padding:.5em .9em}
+.pfStats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pfStats div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:10px 4px;border-radius:12px;background:rgba(255,255,255,.05)}
+.pfStats b{font-family:var(--fd);font-size:20px;color:var(--gold2);font-variant-numeric:tabular-nums}.pfStats small{font-size:11px;color:var(--muted);text-align:center}
+.profile h4{margin:4px 0 0;color:var(--gold);font-size:15px}
+.pfProv{display:flex;flex-direction:column;gap:7px}
+.pfProv div{display:grid;grid-template-columns:30px 1fr 44px;gap:8px;align-items:center}
+.pfProv i{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:10px;font-weight:700;background:var(--c);color:var(--k)}
+.pfProv .bar{height:9px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden}.pfProv .bar em{display:block;height:100%}
+.pfProv small{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.avPick h3{margin:0 0 10px;text-align:center}
+.avUp{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.avUp .btn{font-size:14px;padding:.55em 1em;cursor:pointer}
+.avGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;max-height:46vh;overflow-y:auto;padding:4px}
+.avOpt{aspect-ratio:1;border-radius:50%;overflow:hidden;border:2px solid transparent;padding:0;background:#2a2238;cursor:pointer}
+.avOpt img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}
+.avOpt.on,.avOpt:hover{border-color:var(--gold2);box-shadow:0 0 12px rgba(232,182,74,.7)}
+.topbar .whoBtn{flex-direction:row;align-items:center}

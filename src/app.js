@@ -12,13 +12,13 @@ const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='le
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
 const KEY='lannasnap-v1'; const EPOCH=2; // bump to wipe every save (local + cloud) — 2026-11-04 reset
 let user=null, prof=null;
-function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,epoch:EPOCH,tut:false,tutReward:false,firstTopup:false}; }
+function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,epoch:EPOCH,created:Date.now(),avatar:null,tut:false,tutReward:false,firstTopup:false}; }
 function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1&&s.epoch===EPOCH) return s; if(s){ localStorage.removeItem(KEY); localStorage.removeItem('lannasnap-topup-hide'); } }catch(e){} return null; }
 async function saveProfile(){ try{ localStorage.setItem(KEY,JSON.stringify(prof)); }catch(e){} if(sb&&user){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
 async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data&&data.data.epoch===EPOCH) return data.data; }catch(e){} return null; }
 
 /* ---------- screens ---------- */
-function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop') renderShop(); }
+function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop') renderShop(); if(id==='scrProfile') renderProfile(); }
 document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) show(g.dataset.go); });
 const sfx=n=>{ try{ AUD.sfx(n); }catch(e){} };
 function toast(msg,ms=1400){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,ms); }
@@ -51,7 +51,7 @@ function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMa
 async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common'); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,dup:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
 
 /* ---------- home / deck / collection ---------- */
-function renderTop(){ if(!prof) return; $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
+function renderTop(){ if(!prof) return; $('#pAv').innerHTML=avatarHTML(); $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
 function renderHome(){ renderTop(); $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier,up:canUp(id)})).join(''); }
 let fDeck='all', fColl='all';
 function filterBar(el,cur,set){ el.innerHTML=[['all','ทั้งหมด']].concat(Object.keys(PROV).map(k=>[k,L(PROV[k].ab)])).map(([k,n])=>`<button type="button" data-f="${k}" class="${k===cur?'on':''}">${n}</button>`).join(''); el.onclick=e=>{ const b=e.target.closest('[data-f]'); if(b) set(b.dataset.f); }; }
@@ -176,6 +176,40 @@ async function endMatch(){ renderMatch(); FX.fireflies(false); await crowns(); i
 
 async function endTutorial(){ const win=S.winner===0; prof.tut=true; await saveProfile(); sfx(win?'win':'lose'); if(win){ FX.fireworks(5); FX.confetti(); FX.lanterns(10); }
   modal(`<div class="result"><h2 class="${win?'win':''}">${win?'ชนะ!':'จบบทสอน'}</h2><p>${win?'เก่งมาก! พร้อมลุยแล้ว':'ไม่เป็นไร รู้วิธีเล่นแล้ว ลองอีกทีได้'}</p><p class="muted">สรุป: วางการ์ด · ชนะ 2 ใน 3 สนาม · วัดบัฟทั้งจังหวัด · สแนปเพิ่มเดิมพัน</p><div class="actions"><button class="btn end" id="tutRw" type="button">${prof.tutReward?'กลับหน้าหลัก':'รับรางวัล 10 ใบ'}</button></div></div>`,b=>{ b.querySelector('#tutRw').onclick=()=>{ if(prof.tutReward){ closeModal(); show('scrHome'); } else tutReward(); }; }); }
+
+/* ---------- player profile ---------- */
+function avatarHTML(){ const a=prof.avatar; if(a&&a.type==='card'&&CARDS[a.id]) return `<img src="art/${a.id}.webp" alt="">`; if(a&&(a.type==='img'||a.type==='google')&&a.src) return `<img src="${esc(a.src)}" alt="" referrerpolicy="no-referrer">`;
+  return `<b>${esc((prof.name||'?').trim().charAt(0)||'?')}</b>`; }
+function renderProfile(){ const owned=Object.keys(prof.owned).filter(id=>CARDS[id]); const games=prof.wins+prof.losses; const legends=owned.filter(id=>rarityOf(CARDS[id])==='legend').length, duals=owned.filter(id=>isDual(CARDS[id])).length;
+  const maxTier=owned.reduce((m,id)=>Math.max(m,prof.owned[id].tier||0),0); const laikham=owned.filter(id=>(prof.owned[id].tier||0)>=6).length;
+  const byProv=Object.keys(PROV).filter(k=>k!=='ln').map(k=>[k,owned.filter(id=>CARDS[id].prov.includes(k)).length,PLAYABLE.filter(c=>c.prov.includes(k)).length]);
+  $('#profSub').textContent=user?'บัญชี Google · เซฟบนคลาวด์':'ผู้เยี่ยมชม · เซฟในเครื่องนี้';
+  const gAv=user&&user.user_metadata&&(user.user_metadata.avatar_url||user.user_metadata.picture);
+  $('#profBody').innerHTML=`
+   <div class="pfHead"><button class="pfAv" id="pfAvBtn" type="button" aria-label="เปลี่ยนรูปโปรไฟล์">${avatarHTML()}<span class="pfCam">เปลี่ยนรูป</span></button>
+     <div class="pfName"><label for="pfNameIn" class="pfLbl">ชื่อผู้เล่น</label><div class="pfRow"><input id="pfNameIn" maxlength="20" value="${esc(prof.name)}" autocomplete="nickname"><button class="btn end sm" id="pfSave" type="button">บันทึก</button></div><small id="pfMsg" class="muted"></small></div></div>
+   <div class="pfStats">
+     <div><b>${prof.cl}</b><small>ระดับคอลเลกชัน</small></div><div><b>${prof.wins}</b><small>ชนะ</small></div><div><b>${prof.losses}</b><small>แพ้</small></div><div><b>${games?Math.round(prof.wins/games*100):0}%</b><small>อัตราชนะ</small></div>
+     <div><b>${owned.length}/${PLAYABLE.length}</b><small>การ์ดที่มี</small></div><div><b>${legends}</b><small>ตำนาน</small></div><div><b class="rainbowTxt">${duals}</b><small>สองแผ่นดิน</small></div><div><b>${laikham}</b><small>ขั้นลายคำ</small></div></div>
+   <h4>การ์ดแต่ละจังหวัด</h4>
+   <div class="pfProv">${byProv.map(([k,n,t])=>`<div><i style="--c:${PROV[k].col};--k:${PROV[k].ink}">${esc(L(PROV[k].ab))}</i><span class="bar"><em style="width:${t?n/t*100:0}%;background:${PROV[k].col}"></em></span><small>${n}/${t}</small></div>`).join('')}</div>
+   <p class="muted">${prof.created?'เริ่มเล่นเมื่อ '+new Date(prof.created).toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'}):''}${maxTier?` · อัปสูงสุด ${TIERS[maxTier]}`:''}</p>`;
+  const save=async()=>{ const v=$('#pfNameIn').value.replace(/\s+/g,' ').trim(); if(v.length<2){ $('#pfMsg').textContent='ชื่อต้องยาว 2–20 ตัวอักษร'; sfx('error'); return; } prof.name=v; await saveProfile(); renderTop(); $('#pfMsg').textContent='บันทึกชื่อแล้ว'; sfx('coin'); };
+  $('#pfSave').onclick=save; $('#pfNameIn').onkeydown=e=>{ if(e.key==='Enter') save(); };
+  $('#pfAvBtn').onclick=()=>avatarPicker(gAv); }
+function avatarPicker(gAv){ const owned=PLAYABLE.filter(c=>prof.owned[c.id]).sort(sortDefs);
+  modal(`<div class="avPick"><h3>เลือกรูปโปรไฟล์</h3>
+    <div class="avUp"><label class="btn end" for="avFile">อัปโหลดรูปตัวเอง</label><input type="file" id="avFile" accept="image/*" hidden>${gAv?'<button class="btn ghost" id="avGoogle" type="button">ใช้รูป Google</button>':''}<button class="btn ghost" id="avNone" type="button">ตัวอักษรชื่อ</button></div>
+    <p class="muted">หรือเลือกจากการ์ดที่มี (${owned.length} ใบ)</p>
+    <div class="avGrid">${owned.map(c=>`<button class="avOpt${prof.avatar&&prof.avatar.id===c.id?' on':''}" type="button" data-id="${c.id}" aria-label="${esc(L(c.name))}"><img src="art/${c.id}.webp" alt="" loading="lazy"></button>`).join('')}</div></div>`,b=>{
+    const set=async av=>{ prof.avatar=av; await saveProfile(); closeModal(); renderTop(); renderProfile(); sfx('upgrade'); const el=$('#pfAvBtn'); if(el){ el.classList.add('pop'); FX.burst(el,'#ffd98a',24); } };
+    b.querySelector('.avGrid').onclick=e=>{ const o=e.target.closest('.avOpt'); if(o) set({type:'card',id:o.dataset.id}); };
+    b.querySelector('#avNone').onclick=()=>set(null);
+    const g=b.querySelector('#avGoogle'); if(g) g.onclick=()=>set({type:'google',src:gAv});
+    b.querySelector('#avFile').onchange=async e=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; if(!/^image\//.test(f.type)){ toast('เลือกไฟล์รูปภาพนะ'); return; }
+      try{ const src=await shrinkImage(f,256); set({type:'img',src}); }catch(err){ toast('อ่านรูปนี้ไม่ได้ ลองรูปอื่น'); } }; }); }
+function shrinkImage(file,size){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onerror=rej; r.onload=()=>{ const im=new Image(); im.onerror=rej; im.onload=()=>{ const s=Math.min(im.width,im.height); const c=document.createElement('canvas'); c.width=c.height=size; const x=c.getContext('2d'); x.imageSmoothingQuality='high'; x.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,0,0,size,size); let d=c.toDataURL('image/webp',.85); if(!d.startsWith('data:image/webp')) d=c.toDataURL('image/jpeg',.85); res(d); }; im.src=r.result; }; r.readAsDataURL(file); }); }
+$('#btnProfile').onclick=()=>show('scrProfile');
 
 /* ---------- shop & daily gift ---------- */
 function today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
