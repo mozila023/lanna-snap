@@ -388,3 +388,4 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .card.t2 .frame::after{content:"";position:absolute;inset:0;border-radius:inherit;background-image:radial-gradient(circle at 40% 30%,#fff 0 .7cqw,transparent 2.4cqw),radial-gradient(circle at 70% 32%,#fff 0 .6cqw,transparent 2cqw),radial-gradient(circle at 50% 62%,#fff 0 .7cqw,transparent 2.4cqw),radial-gradient(circle at 16% 40%,#fff 0 .5cqw,transparent 1.8cqw);animation:twinkle 2.2s ease-in-out infinite reverse}
 @keyframes twinkle{0%,100%{opacity:.25}50%{opacity:1}}
 @media (prefers-reduced-motion:reduce){ .card.t2 .frame,.card.t2 .frame::after{animation:none} }
+.legal{text-align:center;font-size:12px;margin:0}.legal a{color:var(--muted)}
