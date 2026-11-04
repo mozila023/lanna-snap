@@ -23,7 +23,7 @@ async function loadCloud(){ // -> {status:'ok',data} | {status:'none'} | {status
 
 /* ---------- server economy (signed in): the server owns cowries, cards, spares, tiers and rank ---------- */
 let ECON=false;
-const ERR_TH={'too many slips today':'ส่งสลิปวันนี้ครบ 3 ครั้งแล้ว พรุ่งนี้ค่อยส่งใหม่นะ','slip not uploaded':'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง','bad slip path':'ไฟล์สลิปไม่ถูกต้อง','not enough cowries':'เบี้ยไม่พอ','not enough spares':'อะไหล่ไม่พอ','gift already claimed today':'รับของขวัญวันนี้ไปแล้ว','daily limit reached':'ซื้อครบโควตาวันนี้แล้ว','already owned':'มีการ์ดนี้แล้ว',"card is not in today's shop":'การ์ดนี้ไม่ได้ขายวันนี้','reward already claimed':'รับรางวัลนี้ไปแล้ว','already max tier':'อัปเกรดสูงสุดแล้ว','card not owned':'ยังไม่มีการ์ดนี้','stake too high':'เบี้ยไม่พอสำหรับเดิมพันนี้','collection complete':'มีการ์ดครบทุกใบแล้ว','too many reports today':'รายงานครบจำนวนต่อวันแล้ว'};
+const ERR_TH={'name taken':'ชื่อนี้มีคนใช้แล้ว ลองชื่ออื่นนะ','name reserved':'ใช้ชื่อนี้ไม่ได้ ลองชื่ออื่นนะ','name too short':'ชื่อต้องยาว 2–20 ตัวอักษร','too many slips today':'ส่งสลิปวันนี้ครบ 3 ครั้งแล้ว พรุ่งนี้ค่อยส่งใหม่นะ','slip not uploaded':'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง','bad slip path':'ไฟล์สลิปไม่ถูกต้อง','not enough cowries':'เบี้ยไม่พอ','not enough spares':'อะไหล่ไม่พอ','gift already claimed today':'รับของขวัญวันนี้ไปแล้ว','daily limit reached':'ซื้อครบโควตาวันนี้แล้ว','already owned':'มีการ์ดนี้แล้ว',"card is not in today's shop":'การ์ดนี้ไม่ได้ขายวันนี้','reward already claimed':'รับรางวัลนี้ไปแล้ว','already max tier':'อัปเกรดสูงสุดแล้ว','card not owned':'ยังไม่มีการ์ดนี้','stake too high':'เบี้ยไม่พอสำหรับเดิมพันนี้','collection complete':'มีการ์ดครบทุกใบแล้ว','too many reports today':'รายงานครบจำนวนต่อวันแล้ว'};
 async function rpc(fn,args){ const {data,error}=await sb.rpc(fn,args||{}); if(error){ throw new Error(ERR_TH[error.message]||('เซิร์ฟเวอร์ไม่ยอมรับ: '+error.message)); } if(data&&data.owned) applyServer(data); return data; }
 function applyServer(s){ if(!prof||!s) return; Object.assign(prof,{bia:s.bia,rank:s.rank,wins:s.wins,losses:s.losses,cl:s.cl,tutReward:s.tutReward,firstTopup:s.firstTopup,owned:s.owned});
   prof.shop={day:today(),ov:2,gift:!!s.shop.gift,bags:s.shop.bags||0,offers:s.shop.offers||null,bought:s.shop.bought||[]};
@@ -398,7 +398,9 @@ function renderProfile(){ const owned=Object.keys(prof.owned).filter(id=>CARDS[i
    <div class="pfProv">${byProv.map(([k,n,t])=>`<div><i style="--c:${PROV[k].col};--k:${PROV[k].ink}">${esc(L(PROV[k].ab))}</i><span class="bar"><em style="width:${t?n/t*100:0}%;background:${PROV[k].col}"></em></span><small>${n}/${t}</small></div>`).join('')}</div>
    ${user?`<div class="pid"><small>รหัสผู้เล่น</small><code id="pfPid">${esc(user.id)}</code><button class="mini" id="pfPidCopy" type="button">คัดลอก</button></div>`:''}
    <p class="muted">${prof.created?'เริ่มเล่นเมื่อ '+new Date(prof.created).toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'}):''}${maxTier?` · อัปสูงสุด ${TIERS[maxTier]}`:''}</p>`;
-  const save=async()=>{ const v=$('#pfNameIn').value.replace(/\s+/g,' ').trim(); if(v.length<2){ $('#pfMsg').textContent='ชื่อต้องยาว 2–20 ตัวอักษร'; sfx('error'); return; } prof.name=v; await saveProfile(); renderTop(); $('#pfMsg').textContent='บันทึกชื่อแล้ว'; sfx('coin'); };
+  const save=async()=>{ let v=$('#pfNameIn').value.replace(/\s+/g,' ').trim(); if(v.length<2){ $('#pfMsg').textContent='ชื่อต้องยาว 2–20 ตัวอักษร'; sfx('error'); return; } const btn=$('#pfSave'); btn.disabled=true;
+    if(user&&sb){ try{ const got=await rpc('set_name',{new_name:v}); if(typeof got==='string') v=got; }catch(err){ if(!/set_name|function|schema cache/i.test(err.message)){ $('#pfMsg').textContent=err.message; sfx('error'); btn.disabled=false; return; } } }
+    prof.name=v; await saveProfile(); renderTop(); $('#pfNameIn').value=v; $('#pfMsg').textContent='บันทึกชื่อแล้ว'; sfx('coin'); btn.disabled=false; boardCache=null; };
   $('#pfSave').onclick=save; $('#pfNameIn').onkeydown=e=>{ if(e.key==='Enter') save(); };
   $('#pfAvBtn').onclick=()=>avatarPicker(gAv); const pc=$('#pfPidCopy'); if(pc) pc.onclick=()=>copyText(user.id,$('#pfPid')); }
 function avatarPicker(gAv){ const owned=PLAYABLE.filter(c=>prof.owned[c.id]).sort(sortDefs);
@@ -474,7 +476,7 @@ $('#btnLogout').onclick=async()=>{ try{ if(NET) netAbort(); }catch(e){} if(sb&&u
       if(cl.status==='ok'){ prof=cl.data; cloudOK=true; }
       else if(cl.status==='none'){ prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=true; }
       else { prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=false; setTimeout(()=>toast('เชื่อมต่อคลาวด์ไม่ได้ · เซฟไว้ในเครื่องนี้ก่อน',2600),900); }
-      prof.uid=user.id; await startEcon(); await saveProfile(); enter(); return; } }catch(e){} }
+      prof.uid=user.id; await startEcon(); try{ const nm=await rpc('claim_name',{wanted:cleanName(prof.name)}); if(typeof nm==='string'&&nm) prof.name=nm; }catch(e){} await saveProfile(); enter(); return; } }catch(e){} }
   $('#scrLogin').hidden=false; })();
 window.LS={startTutorial,tutReward,get S(){return S;},get prof(){return prof;},startMatch,newGame,aiPlan,revealTurn,startTurn,queuePlay,finish};
 })();

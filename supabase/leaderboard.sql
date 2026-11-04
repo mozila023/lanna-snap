@@ -1,5 +1,5 @@
 -- Lanna Snap · leaderboard (top 100 list + your own position up to 500)
--- Run this whole file once in Supabase → SQL Editor (safe to run again).
+-- Run this whole file once in Supabase → SQL Editor (safe to run again). Needs names.sql first.
 -- Order: rank points (high first), then wins, then whoever reached it first (older account).
 -- Only players with at least 1 rank point are listed.
 
@@ -12,14 +12,14 @@ language sql security definer set search_path = public stable as $$
     from wallet w where w.rank > 0
   ), top as (
     select r.pos, r.rank, r.wins,
-           left(coalesce(nullif(trim(p.data->>'name'), ''), 'ผู้เล่น'), 20) as name,
+           coalesce(n.name, 'ผู้เล่น') as name,
            case
              when p.data->'avatar'->>'type' = 'card' then jsonb_build_object('type', 'card', 'id', left(p.data->'avatar'->>'id', 40))
              when p.data->'avatar'->>'type' = 'google' and p.data->'avatar'->>'src' like 'https://%' and length(p.data->'avatar'->>'src') < 600
                then jsonb_build_object('type', 'google', 'src', p.data->'avatar'->>'src')
            end as av,
            (r.uid = auth.uid()) as me
-    from ranked r left join profiles p on p.id = r.uid
+    from ranked r left join profiles p on p.id = r.uid left join player_names n on n.uid = r.uid
     where r.pos <= 100 order by r.pos
   )
   select json_build_object(
