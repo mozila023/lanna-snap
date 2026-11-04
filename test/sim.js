@@ -1,6 +1,6 @@
 const fs=require('fs'), vm=require('vm');
 const ctx={console,Math,Date}; vm.createContext(ctx);
-vm.runInContext(fs.readFileSync('../src/cards.js','utf8')+'\n'+fs.readFileSync('../src/engine.js','utf8')+'\nthis.API_={C,CARDS,LOCS,newGame,startTurn,aiPlan,queuePlay,revealTurn,locWinner,cardPower,allBoard,applySnapsAtTurnStart};',ctx);
+vm.runInContext(fs.readFileSync('../src/cards.js','utf8')+'\n'+fs.readFileSync('../src/cards2.js','utf8')+'\n'+fs.readFileSync('../src/engine.js','utf8')+'\nthis.API_={C,CARDS,LOCS,newGame,startTurn,aiPlan,queuePlay,revealTurn,locWinner,cardPower,allBoard,applySnapsAtTurnStart};',ctx);
 const A=ctx.API_; const PLAY=A.C.filter(c=>!c.token);
 const rnd=n=>Math.floor(Math.random()*n);
 function deck(){ const want=[1,1,2,2,2,3,3,4,4,5,5,6]; const out=[]; for(const w of want){ const c=PLAY.filter(x=>x.cost===w&&!out.includes(x.id)); const pick=c.length?c[rnd(c.length)]:PLAY.filter(x=>!out.includes(x.id))[0]; out.push(pick.id);} return out; }

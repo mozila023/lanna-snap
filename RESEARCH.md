@@ -28,3 +28,13 @@ Doi Inthanon (wiki): 2,565 m; named after Inthawichayanon, Grand Prince of Chian
 Bo Sang (wiki): Tai Lue village; handmade painted umbrellas; festival 3rd week of January.
 Khun Tan tunnel (wiki): 1,352.1 m, finished 1918; 2nd longest since 2024.
 Lampang: see /home/claude/lampang/RESEARCH.md
+
+## Set 2 (2026-11-04): legends, spirits, rituals, myths, festivals, crafts, food
+- Dara Rasmi: royal consort of Rama V, daughter of Inthawichayanon, b. 1873; promoted Lanna farming, dance, weaving; Suan Chao Sabai, Mae Rim. Sources: silpa-mag.com/?p=35858, chula.ac.th/news/129672
+- Chiraprapha: queen regnant c. 1545–1546, negotiated with Ayutthaya; Wisutthithewi: ruler of Chiang Mai under Burmese rule c. 1564–1578, last of the Mangrai line. Sources: matichon weekly (?p=907832), silpa-mag.com/?p=98141
+- Phraya Singhanat Racha: Shan leader, first governor of Mae Hong Son, c. 1874. Source: lovethailand.org memorial page, gotoknow 409011
+- Chao Anantaworarittidet: ruler of Nan 1852–1891, restored Wat Phumin (Pu Man Ya Man mural). Source: silpa-mag (Nan tag), matichon prachachuen 4156638
+- Chao Phiriya Thepphawong: last ruler of Phrae; 1902 Shan rebellion; exile to Luang Prabang. Source: silpa-mag.com/?p=95717, ?p=139370
+- Pu Sae Ya Sae & Liang Dong at Doi Kham: silpa-mag.com/culture/article_154100, so05.tci-thaijo.org sjss 20381
+- Spirits (phi suea ban/muang, phi pu ya, phi ka, phi pong, phi khun nam, phi mot phi meng), rituals (suep chata, alms, bathing stupa, tung offering, song khro), myths (naga, singha, Erawan, hamsa, kinnaree, mom), festivals (Yi Peng, Poy Sang Long, Nan boat race, Tan Kuay Salak, Pi Mai Mueang): general Lanna folklore; card text kept descriptive and respectful. No monks or Buddha images depicted.
+- Places: Doi Luang Chiang Dao (Chao Luang Kham Daeng legend), Pai, Tha Phae Sunday walking street, Bo Kluea salt wells (Nan), Phu Langka NP (Phayao), Chae Son hot springs (Lampang).

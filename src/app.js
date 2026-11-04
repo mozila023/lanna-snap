@@ -47,7 +47,7 @@ function canUp(id){ const o=prof&&prof.owned[id]; return !!o&&o.tier<6&&(o.dup||
 function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??def.power; const base=def.power;
   const provs=def.prov.map(p=>`<i style="--c:${PROV[p].col};--k:${PROV[p].ink}">${esc(L(PROV[p].ab))}</i>`).join('');
   const sts=o.status?Object.entries(o.status).map(([k])=>`<b class="${k}">${esc(L(STATUS[k]))}</b>`).join(''):'';
-  const isPow=def.type!=='temple'; const cost=o.cost??def.cost; const lk=(o.tier||0)>=6&&isPow&&o.power==null;
+  const isPow=def.type!=='temple'&&def.type!=='ritual'; const cost=o.cost??def.cost; const lk=(o.tier||0)>=6&&isPow&&o.power==null;
   const tk=o.tier||0; const tcl=Array.from({length:tk},(_,i)=>' t'+(i+1)).join('');
   return `<div class="card${tcl}${isDual(def)?' dual':''}${o.small?' small':''}${o.cls?' '+o.cls:''}" data-id="${def.id}"${o.uid?` data-uid="${o.uid}"`:''} data-t="${o.tier||0}" style="--pc:${pc}">
     <div class="art">${tk>=2?'<i class="twk"></i>':''}<img src="art/${def.id}.webp" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(160deg,${pc},#1a1222)'"></div><div class="frame"></div>

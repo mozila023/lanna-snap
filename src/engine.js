@@ -59,6 +59,11 @@ function API(S,actor){ const E={
   drawWhere:(p,pred)=>{ const P=S.players[p]; const i=P.deck.findIndex(pred); if(i>=0&&P.hand.length<7){ P.hand.push(P.deck.splice(i,1)[0]); } },
   addToHand:(p,id)=>{ const P=S.players[p]; if(P.hand.length<7) P.hand.push(S.mkCard(id,p)); },
   nextHere:(c,n)=>{ S.nextBonus[c.owner][c.loc]+=n; },
+  power:x=>cardPower(S,x),
+  all:()=>allBoard(S),
+  at:(li,side)=>S.locs[li].cards[side].slice(),
+  losingHere:c=>c.loc>=0&&locWinner(S,c.loc)===1-c.owner,
+  homeHere:x=>x.loc>=0&&S.locs[x.loc].revealed&&x.def.prov.includes(S.locs[x.loc].def.prov),
 }; return E; }
 function moveCard(S,x,li){ if(x.def.steady||li===x.loc||li<0) return false; const L=S.locs[x.loc]; if(S.locs[li].cards[x.owner].length>=capOf(S,li)) return false; const i=L.cards[x.owner].indexOf(x); if(i>=0) L.cards[x.owner].splice(i,1); x.loc=li; S.locs[li].cards[x.owner].push(x); S.log.push({k:'move',uid:x.uid,to:li}); return true; }
 /* ---------- turn flow ---------- */
@@ -83,6 +88,7 @@ function canPlace(S,p,li){ const L=S.locs[li]; return L.cards[p].length<capOf(S,
 function endTurn(S,ev){ const E=API(S); S.log=[];
   for(const c of allBoard(S).sort((a,b)=>a.seq-b.seq)) if(c.def.endTurn) c.def.endTurn(E,c);
   for(let li=0;li<3;li++){ const L=S.locs[li]; if(!L.revealed) continue;
+    if(L.def.endTurn) L.def.endTurn(E,L,li);
     if(L.def.haunt){ const all=[...L.cards[0],...L.cards[1]]; const v=S.rng.pick(all); if(v) E.status(v,'confuse'); }
     if(L.def.tunnel){ for(const p of [0,1]){ const c=L.lastPlayed[p]; if(c&&c.loc===li&&c.turnPlayed===S.turn) moveCard(S,c,(li+1)%3); } } }
   for(const c of allBoard(S)) if(c.status.confuse&&c.status.confuse>=S.turn&&!(c.loc>=0&&S.locs[c.loc].def.calm)){ const opts=[0,1,2].filter(i=>i!==c.loc&&S.locs[i].cards[c.owner].length<capOf(S,i)); delete c.status.confuse; if(opts.length) moveCard(S,c,S.rng.pick(opts)); }
