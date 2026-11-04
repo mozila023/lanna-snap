@@ -436,12 +436,6 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .card.t1 .prov{left:4cqw;top:24cqw;z-index:auto}.card.t1 .tp{right:4cqw;top:24cqw;z-index:auto}
 .card.t1 .pips{bottom:-11cqw}
 .card.t1::after{border-radius:0}
-.card.t1::after{inset:-13.93% -16.83%}
-.card.t2::after{inset:-12.76% -13.97%}
-.card.t3::after{inset:-16.59% -18.35%}
-.card.t4::after{inset:-17.34% -16.83%}
-.card.t5::after{inset:-16.23% -16.83%}
-.card.t6::after{inset:-18.49% -22.18%}
 .grid{gap:20px 18px;padding:18px 18px 28px}
 .deckStrip{gap:10px 9px}
 .deckSlots{gap:10px}
@@ -468,10 +462,12 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .card.t6::before{background:radial-gradient(circle,rgba(255,220,140,.7),rgba(255,150,220,.35) 70%)}
 .card.dual.t1::before{display:none}.card.dual.t4::before,.card.dual.t5::before,.card.dual.t6::before{display:block;-webkit-mask:none;mask:none;padding:0;animation:none}
 /* v5b: straight-edge fit; frame is behind the art so nothing of it can cover the picture */
-.card.t1::after{inset:-13.28% -15.77%}
-.card.t2::after{inset:-12.14% -13.01%}
-.card.t3::after{inset:-15.89% -17.24%}
-.card.t4::after{inset:-16.62% -15.77%}
-.card.t5::after{inset:-15.53% -15.77%}
-.card.t6::after{inset:-17.75% -20.96%}
 .card.t1 .art{border-radius:1.6cqw}
+/* v6: frames trimmed to their real edge; band measured by density; frame drawn behind the art */
+.card.t1::after{inset:-14.34% -15.43% -18.20% -15.43%}
+.card.t2::after{inset:-15.14% -15.37% -19.63% -15.01%}
+.card.t3::after{inset:-17.40% -16.95% -19.68% -17.32%}
+.card.t4::after{inset:-16.59% -18.34% -18.56% -17.96%}
+.card.t5::after{inset:-21.87% -17.96% -16.40% -18.34%}
+.card.t6::after{inset:-23.27% -20.56% -18.26% -20.56%}
+.mClose{z-index:10}
