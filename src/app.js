@@ -90,7 +90,7 @@ function coachMsg(){ const me=S.players[0]; const q=me.played.length; const hasT
     return ['ชนะ <b>2 ใน 3 สนาม</b> คือชนะเกม · แตะการ์ดในมือ 1 ใบ<br><small>วงฟ้า = พลังงานที่ใช้ · หกเหลี่ยมส้ม = พลัง</small>','#hand']; }
   if(S.turn===2) return [q?'ดีมาก! กดจบเทิร์นได้เลย':'พลังงานเพิ่มเทิร์นละ 1 · สนามไหนพลังรวมมากกว่า ฝ่ายนั้นชนะสนาม<br><small>ตัวเลขมุมขวาของสนาม: บน = คู่แข่ง, ล่าง = เรา</small>',q?'#btnEnd':'#board'];
   if(S.turn===3) return ['แต่ละสนามมีกติกาพิเศษ อ่านใต้ชื่อสนาม · การ์ด ลป. ได้ +1 ที่ห้าแยกหอนาฬิกา (สนามบ้าน)<br><small>กดค้างที่การ์ดเพื่ออ่านความสามารถ</small>','.loc[data-li="0"] .tile'];
-  if(S.turn===4) return hasTemple&&!me.played.some(p=>p.li==='temple')?['ลอง<b>การ์ดวัด</b>! แตะ วัดพระธาตุลำปางหลวง แล้วแตะ <b>ช่องวัด</b> ด้านบน<br><small>การ์ด ลป. ทุกใบได้ +2 (ของคู่แข่งด้วย)</small>',sel&&sel.def.type==='temple'?'#templeSlot':'#hand']:['เยี่ยม! วัดอยู่จนกว่าจะมีวัดอื่นมาแทนที่','#btnEnd'];
+  if(S.turn===4) return hasTemple&&!me.played.some(p=>p.li==='temple')?['ลอง<b>การ์ดวัด</b>! แตะ วัดพระธาตุลำปางหลวง แล้วแตะ <b>ช่องวัด</b> ด้านซ้าย<br><small>การ์ด ลป. ทุกใบได้ +2 (ของคู่แข่งด้วย)</small>',sel&&sel.def.type==='temple'?'#templeSlot':'#hand']:['เยี่ยม! วัดอยู่จนกว่าจะมีวัดอื่นมาแทนที่','#btnEnd'];
   if(S.turn===5) return [me.snapped?'สแนปแล้ว! เดิมพันจะคูณ 2':'มั่นใจว่าชนะ? กด <b>สแนป</b> เพื่อเพิ่มเดิมพันเป็น 2 เท่า<br><small>ถ้าดูท่าจะแพ้ กด "ถอย" จะเสียน้อยกว่า</small>',me.snapped?'#btnEnd':'#btnSnap'];
   return ['เทิร์นสุดท้าย! ลงการ์ดให้คุ้มพลังงาน แล้วจบเทิร์น','#hand']; }
 function renderCoach(){ const box=$('#coach'); $$('.hl').forEach(x=>x.classList.remove('hl')); if(!S||!S.tut||S.over){ box.hidden=true; return; } const [m,target]=coachMsg(); box.innerHTML=`<span class="cAv">ครู</span><div>${m}</div>`; box.hidden=false; const t=$(target); if(t) t.classList.add('hl'); }
@@ -113,8 +113,8 @@ function powerOf(c){ return cardPower(S,c); }
 function renderMatch(hideUids){ const me=S.players[0];
   $('#cubes').textContent=S.cubes*(S.pendingSnap?2:1); $('#stakeLbl').textContent=S.stake?`× ${S.stake} เบี้ย`:'ซ้อมมือ'; $('#energy').textContent=me.energy; $('#turnLbl').textContent=`${S.turn}/${S.maxTurn}`;
   $('#btnSnap').disabled=me.snapped||S.over; $('#btnSnap').textContent=me.snapped?'สแนปแล้ว':'สแนป';
-  const tc=S.temple; $('#templeSlot .tsCard').innerHTML=tc?`${cardHTML(tc.def,{small:true,tier:0})}<span>${esc(L(tc.def.name))}<br><small>${esc(L(PROV[tc.def.temple].name))} +2 ทุกใบ</small></span>`:'<span class="muted">ว่าง · ลงการ์ดวัดเพื่อบัฟทั้งจังหวัด</span>';
-  const queuedTemple=me.played.find(p=>p.li==='temple'); if(queuedTemple) $('#templeSlot .tsCard').innerHTML+=cardHTML(queuedTemple.c.def,{small:true,cls:'queued',uid:queuedTemple.c.uid});
+  const tc=S.temple; $('#templeSlot').classList.toggle('has',!!tc); $('#templeSlot').style.setProperty('--tc',tc?PROV[tc.def.temple].col:'transparent'); $('#templeSlot .tsCard').innerHTML=tc?`${cardHTML(tc.def,{tier:0})}<span class="tsBuff"><b>${esc(L(PROV[tc.def.temple].ab))}</b> +2<small>${tc.owner===0?'วัดของเรา':'วัดคู่แข่ง'}</small></span>`:'<div class="tsEmpty"><span>卍</span><small>ว่าง<br>ลงการ์ดวัด<br>บัฟทั้งจังหวัด</small></div>';
+  const queuedTemple=me.played.find(p=>p.li==='temple'); if(queuedTemple) $('#templeSlot .tsCard').innerHTML=cardHTML(queuedTemple.c.def,{cls:'queued',uid:queuedTemple.c.uid})+'<span class="tsBuff"><small>รอเปิด</small></span>';
   $('#board').innerHTML=S.locs.map((Lc,li)=>{ const d=Lc.def; const pc=PROV[d.prov].col; const mine=Lc.cards[0].filter(c=>!hideUids||!hideUids.has(c.uid)), opp=Lc.cards[1].filter(c=>!hideUids||!hideUids.has(c.uid));
     const qd=me.played.filter(p=>p.li===li).map(p=>p.c); const a=locPower(S,li,0), b=locPower(S,li,1); const cap=capOf(S,li);
     const cd=c=>cardHTML(c.def,{small:true,uid:c.uid,power:powerOf(c),status:Object.fromEntries(Object.keys(c.status).filter(s=>statusActive(S,c,s)).map(s=>[s,1])),tier:0,cls:statusActive(S,c,'sleep')?'slept':''});
@@ -180,7 +180,7 @@ function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textCont
   const offers=dailyOffers(); const lockedN=PLAYABLE.filter(c=>!prof.owned[c.id]).length;
   $('#shopBody').innerHTML=`
     <div class="gift${st.gift?' done':''}"><div><b>ของขวัญประจำวัน</b><small>${st.gift?'รับแล้ว กลับมาใหม่พรุ่งนี้':'รับเบี้ยฟรี 50 วันละครั้ง'}</small></div><button class="btn end" id="btnGift" type="button" ${st.gift?'disabled':''}>${st.gift?'รับแล้ว':'รับ 50'}</button></div>
-    ${prof.firstTopup?'':`<div class="topup"><div class="tuArt">${cardHTML(CARDS.mangrai,{tier:2})}</div><div class="tuTxt"><b>เติมเงินครั้งแรก</b><span>เติมเท่าไหร่ก็ได้ รับ <span class="rainbowTxt">พญามังราย</span> ระดับ ${TIERS[2]} (+2)</span><small>ครั้งเดียวต่อบัญชี</small><button class="btn play sm" id="btnTopup" type="button">เติมเงิน</button></div></div>`}
+    ${prof.firstTopup?'':`<div class="topup big"><div class="tuShine"></div><div class="tuArt">${cardHTML(CARDS.mangrai,{tier:2})}</div><div class="tuTxt"><span class="tuTag">ครั้งเดียวต่อบัญชี</span><b>เติมเงินครั้งแรก</b><span class="tuLine">เติมเท่าไหร่ก็ได้<br>รับ <span class="rainbowTxt">พญามังราย</span></span><span class="tuSub">ระดับ ${TIERS[2]} (+2) · ตำนานสองแผ่นดิน</span><button class="btn play" id="btnTopup" type="button">เติมเงิน</button></div></div>`}
     <h4>การ์ดแนะนำวันนี้</h4>
     <div class="offers">${offers.length?offers.map(c=>{ const got=!!prof.owned[c.id]; return `<div class="offer${got?' sold':''}" data-id="${c.id}">${cardHTML(c,{cls:got?'':''})}<button class="buy" type="button" data-buy="${c.id}" ${got||prof.bia<priceOf(c)?'disabled':''}>${got?'ซื้อแล้ว':`<span class="shell">◖</span>${priceOf(c)}`}</button></div>`; }).join(''):'<p class="muted">คุณมีการ์ดครบทุกใบแล้ว</p>'}</div>
     <h4>ของอื่นๆ</h4>
@@ -189,6 +189,13 @@ function renderShop(){ renderTop(); const st=shopState(); $('#shopDay').textCont
       <div class="good"><div class="gIcon bag"></div><div><b>ถุงบูสเตอร์</b><small>+3 บูสเตอร์ ให้การ์ดสุ่ม 3 ใบที่มี · วันละ 3 ถุง (${st.bags}/3)</small></div><button class="buy" type="button" id="btnBag" ${st.bags<3&&prof.bia>=BAG?'':'disabled'}><span class="shell">◖</span>${BAG}</button></div>
     </div>
     <p class="muted">เบี้ยเป็นเงินในเกมเท่านั้น ได้จากการเล่นและของขวัญรายวัน</p>`; }
+function topupHide(){ try{ return localStorage.getItem('lannasnap-topup-hide')===today(); }catch(e){ return false; } }
+function topupPopup(force){ if(prof.firstTopup||(!force&&topupHide())||!$('#modal').hidden) return;
+  modal(`<div class="tuPop"><div class="tuGlow"></div><p class="tuKick">โปรเติมเงินครั้งแรก</p><div class="tuBig">${cardHTML(CARDS.mangrai,{tier:2})}</div><h2><span class="rainbowTxt">พญามังราย</span></h2><p>เติมเท่าไหร่ก็ได้ รับทันที<br>ระดับ <b>${TIERS[2]} (+2)</b> · ตำนานสองแผ่นดิน</p><button class="btn play" id="tuGo" type="button">ไปเติมเงิน</button><label class="tuHide"><input type="checkbox" id="tuHide"> ไม่แสดงอีกวันนี้</label></div>`,b=>{
+    const c=b.querySelector('.tuBig .card'); c.classList.add('pop'); setTimeout(()=>{ FX.burst(c,'#ffd98a',30); },250); sfx('legend');
+    const done=()=>{ if(b.querySelector('#tuHide')?.checked){ try{ localStorage.setItem('lannasnap-topup-hide',today()); }catch(e){} } };
+    b.querySelector('#tuGo').onclick=()=>{ done(); closeModal(); show('scrShop'); };
+    $('#modal').addEventListener('click',function once(e){ if(e.target.id==='modal'||e.target.closest('.mClose')){ done(); $('#modal').removeEventListener('click',once); } }); }); }
 function confirmBuy(title,price,html,fn){ modal(`<div class="result"><h2 style="font-size:24px">${title}</h2>${html||''}<p>ราคา <b>${price}</b> เบี้ย · คงเหลือหลังซื้อ ${prof.bia-price}</p><div class="actions"><button class="btn ghost" id="noB" type="button">ไม่ซื้อ</button><button class="btn end" id="yesB" type="button">ซื้อเลย</button></div></div>`,b=>{ b.querySelector('#noB').onclick=closeModal; b.querySelector('#yesB').onclick=async()=>{ const before=prof.bia; prof.bia-=price; await fn(); await saveProfile(); renderShop(); FX.count($('.biaMirror'),before,prof.bia,700); }; }); }
 function rollPack(){ const locked=PLAYABLE.filter(c=>!prof.owned[c.id]); const by=r=>locked.filter(c=>rarityOf(c)===r);
   const roll=Math.random()*100; let r=roll<RAR.dual.p?'dual':roll<RAR.dual.p+RAR.legend.p?'legend':'common';
@@ -204,7 +211,7 @@ $('#shopBody').addEventListener('click',async e=>{ const st=shopState();
   const of=e.target.closest('.offer .card'); if(of) cardView(of.dataset.id); });
 
 /* ---------- auth ---------- */
-async function enter(){ $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); setTimeout(()=>{ if(AUD.current) toast('♪ '+AUD.current.th,1800); },600); }
+async function enter(){ $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); else setTimeout(topupPopup,700); setTimeout(()=>{ if(AUD.current) toast('♪ '+AUD.current.th,1800); },600); }
 document.addEventListener('pointerdown',()=>{ try{ AUD.unlock(); }catch(e){} },{once:false,passive:true});
 function soundBtns(){ const p=AUD.pref; $$('.btnMusic').forEach(b=>{ b.classList.toggle('off',!p.music); b.setAttribute('aria-pressed',p.music); }); $$('.btnSfx').forEach(b=>{ b.classList.toggle('off',!p.sfx); b.setAttribute('aria-pressed',p.sfx); }); }
 document.addEventListener('click',e=>{ if(e.target.closest('.btnMusic')){ AUD.setMusic(!AUD.pref.music); soundBtns(); if(AUD.pref.music&&AUD.current) toast('♪ '+AUD.current.th); } else if(e.target.closest('.btnSfx')){ AUD.setSfx(!AUD.pref.sfx); soundBtns(); sfx('tap'); } else if(e.target.closest('.btnNext')){ const t=AUD.shuffle(); if(t){ toast('♪ '+t.th); showTrack(t); } } });
