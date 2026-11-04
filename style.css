@@ -542,3 +542,13 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 #mainNav button.on svg{filter:drop-shadow(0 0 6px rgba(232,182,74,.7))}
 #app.withNav .scr{bottom:var(--navH)}
 #app.withNav #scrMatch,#app.withNav #scrLogin{bottom:0}
+/* ---------- donate ---------- */
+.biaCoin{aspect-ratio:1;width:100%;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;background:radial-gradient(circle at 35% 30%,#fff3c4,#e8b64a 45%,#8a5a12);box-shadow:0 0 0 4px #5a3a0a,0 0 0 7px #e8b64a,0 0 30px rgba(255,210,110,.7);color:#3a1d06}
+.biaCoin .shell{font-size:26px;transform:rotate(90deg);color:#5a3a0a;line-height:1}.biaCoin b{font-family:var(--fd);font-size:clamp(22px,7vw,34px);line-height:1}.biaCoin small{font-size:13px;font-weight:600}
+.biaCoin.big{width:min(170px,46vw)}.biaCoin.big b{font-size:40px}
+.donate .qrBox{display:flex;flex-direction:column;align-items:center;gap:6px;margin:8px auto;padding:12px;border-radius:14px;background:#fff;width:fit-content}
+.donate .qrBox small{color:#333;font-size:12px}
+.dSteps{text-align:left;margin:8px 0;padding-left:22px;line-height:1.6;font-size:14px}
+.pid{display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:center;padding:8px;border-radius:12px;background:rgba(0,0,0,.3);margin:6px 0}
+.pid small{width:100%;text-align:center;color:var(--muted);font-size:12px}
+.pid code{font-size:11px;word-break:break-all;color:var(--gold2);user-select:all;max-width:100%}
