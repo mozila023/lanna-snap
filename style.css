@@ -320,3 +320,6 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .shop > *{flex-shrink:0}
 .tuBig{margin-top:16px}
 .templeSlot{width:clamp(72px,19%,150px)}
+.card .pow.lk{background:radial-gradient(circle at 40% 30%,#fff1b0,#d99a1f);color:#3a1d06;text-shadow:none}
+.card.lkc .pow.up{background:radial-gradient(circle at 40% 30%,#fff1b0,#d99a1f);color:#3a1d06;text-shadow:none}
+.up .gain{font-weight:600}

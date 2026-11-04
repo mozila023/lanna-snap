@@ -6,7 +6,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
 const SUPA={url:'https://gfhetnzcmoagbbjxmgyd.supabase.co',key:'sb_publishable_i7VWQb9gWnZAE8NWNNDDWQ_55xVgDUj'};
 let sb=null; try{ if(window.supabase) sb=window.supabase.createClient(SUPA.url,SUPA.key); }catch(e){ sb=null; }
 const TIERS=['ธรรมดา','กรอบผ้าทอ','ทะลุกรอบ','ภาพนูน','เรืองแสง','ทองคำเปลว','ลายคำ'];
-const UP_BOOST=[5,10,20,30,40,50], UP_BIA=[25,100,200,300,400,500];
+const UP_BOOST=[5,10,20,30,40,100], UP_BIA=[25,100,200,300,400,1500]; const MAX_BONUS=2; // only the final tier (ลายคำ) adds power
 const PLAYABLE=C.filter(c=>!c.token);
 const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='legend'?'legend':'common';
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
@@ -31,15 +31,15 @@ function canUp(id){ const o=prof&&prof.owned[id]; return !!o&&o.tier<6&&o.boost>
 function cardHTML(def,o={}){ const pc=PROV[def.prov[0]].col; const pw=o.power??def.power; const base=def.power;
   const provs=def.prov.map(p=>`<i style="--c:${PROV[p].col};--k:${PROV[p].ink}">${esc(L(PROV[p].ab))}</i>`).join('');
   const sts=o.status?Object.entries(o.status).map(([k])=>`<b class="${k}">${esc(L(STATUS[k]))}</b>`).join(''):'';
-  const isPow=def.type!=='temple'; const cost=o.cost??def.cost;
+  const isPow=def.type!=='temple'; const cost=o.cost??def.cost; const lk=(o.tier||0)>=6&&isPow&&o.power==null;
   return `<div class="card${isDual(def)?' dual':''}${o.small?' small':''}${o.cls?' '+o.cls:''}" data-id="${def.id}"${o.uid?` data-uid="${o.uid}"`:''} data-tier="${o.tier||0}" style="--pc:${pc}">
     <div class="art"><img src="art/${def.id}.webp" alt="" loading="lazy" onerror="this.style.display='none';this.parentNode.style.background='linear-gradient(160deg,${pc},#1a1222)'"></div><div class="frame"></div>
-    <div class="cost${cost<def.cost?' up':''}">${cost}</div>${isPow?`<div class="pow${pw>base?' up':pw<base?' down':''}">${pw}</div>`:''}
+    <div class="cost${cost<def.cost?' up':''}">${cost}</div>${isPow?`<div class="pow${lk?' lk':pw>base?' up':pw<base?' down':''}">${lk?pw+MAX_BONUS:pw}</div>`:''}
     <div class="prov">${provs}</div>${o.small?'':`<span class="tp">${esc(L(TYPES[def.type]))}</span>`}${sts?`<div class="sts">${sts}</div>`:''}
     <div class="nm"><span>${esc(L(def.name))}</span></div>${o.up?'<b class="upb">UP</b>':''}</div>`; }
 function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMatch=!$('#scrMatch').hidden; const tier=own&&!inMatch?own.tier:0;
   const nextB=UP_BOOST[tier], nextC=UP_BIA[tier];
-  const up=own?(tier<6?`<div class="up"><div class="tiers">${TIERS.map((n,i)=>`<span class="${i<=tier?'on':''}">${i===tier?'●':'○'}</span>`).join('')}</div><div>ระดับ: <b>${TIERS[tier]}</b> → ${TIERS[tier+1]}</div><div class="bar"><i style="width:${Math.min(100,own.boost/nextB*100)}%"></i></div><small>บูสเตอร์ ${own.boost}/${nextB} · ใช้ ${nextC} เบี้ย</small><button class="btn primary" id="btnUp" type="button" ${own.boost>=nextB&&prof.bia>=nextC?'':'disabled'}>อัปเกรด</button></div>`:`<div class="up"><b>ระดับสูงสุด: ลายคำ ✦</b></div>`):(isDual(def)?`<p class="muted"><span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · หาได้จากซองการ์ดสุ่มเท่านั้น (โอกาส 2%)</p>`:`<p class="muted">ยังไม่ได้ปลดล็อก · ขึ้นระดับคอลเลกชัน ซื้อในร้าน หรือเปิดซองสุ่ม</p>`);
+  const up=own?(tier<6?`<div class="up"><div class="tiers">${TIERS.map((n,i)=>`<span class="${i<=tier?'on':''}">${i===tier?'●':'○'}</span>`).join('')}</div><div>ระดับ: <b>${TIERS[tier]}</b> → ${TIERS[tier+1]}${tier===5?' <b class="gain">· พลัง +2 ในสนาม</b>':''}</div>${tier===5?'<small class="muted">ขั้นสุดท้าย ใช้บูสเตอร์และเบี้ยมาก แต่การ์ดได้พลัง +2 ทุกตา</small>':''}<div class="bar"><i style="width:${Math.min(100,own.boost/nextB*100)}%"></i></div><small>บูสเตอร์ ${own.boost}/${nextB} · ใช้ ${nextC} เบี้ย</small><button class="btn primary" id="btnUp" type="button" ${own.boost>=nextB&&prof.bia>=nextC?'':'disabled'}>อัปเกรด</button></div>`:`<div class="up"><b>ระดับสูงสุด: ลายคำ ✦</b><span class="gain">พลัง +2 ทุกครั้งที่ลงสนาม</span></div>`):(isDual(def)?`<p class="muted"><span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · หาได้จากซองการ์ดสุ่มเท่านั้น (โอกาส 2%)</p>`:`<p class="muted">ยังไม่ได้ปลดล็อก · ขึ้นระดับคอลเลกชัน ซื้อในร้าน หรือเปิดซองสุ่ม</p>`);
   const upHtml=inMatch?'':up;
   modal(`<div class="cardView">${cardHTML(def,{tier,cls:own?'':'unowned'})}<h3>${esc(L(def.name))}</h3>
     <div class="ab"><small>${isDual(def)?'<span class="rainbowTxt">ตำนานสองแผ่นดิน</span> · ':''}${esc(L(TYPES[def.type]))} · ${def.prov.map(p=>esc(L(PROV[p].name))).join(' / ')}</small><br>${esc(L(def.text))}</div>
@@ -99,8 +99,9 @@ async function tutReward(){ const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rar
   modal(`<div class="result"><h2 style="font-size:26px">รางวัลจบบทสอน</h2><p>ได้การ์ดใหม่ ${pool.length} ใบ!</p><div class="draw10">${pool.map(c=>`<div class="d10">${cardHTML(c)}</div>`).join('')}</div><div class="actions"><button class="btn end" id="d10ok" type="button">ไปจัดเด็คกัน</button></div></div>`,b=>{
     sfx('pack'); b.querySelectorAll('.d10').forEach((d,i)=>setTimeout(()=>{ d.classList.add('open'); sfx('reveal'); const c=d.querySelector('.card'); FX.burst(c,PROV[CARDS[c.dataset.id].prov[0]].col,14); },300+i*180));
     b.querySelector('#d10ok').onclick=()=>{ closeModal(); show('scrDeck'); toast('ใส่การ์ดใหม่ลงเด็คได้เลย หรือกด "จัดให้"',2200); }; }); }
+function applyTierPower(S,p){ const P=S.players[p]; for(const c of [...P.deck,...P.hand]){ const o=prof.owned[c.def.id]; if(o&&o.tier>=6){ c.perm+=MAX_BONUS; c.laikham=true; } } }
 function startMatch(stake=0){ if(prof.deck.length<12){ toast('จัดเด็คให้ครบ 12 ใบก่อนนะ'); show('scrDeck'); return; }
-  S=newGame({seed:(Math.random()*2**31)|0,decks:[prof.deck.slice(),aiDeck()],names:[prof.name,AI_NAMES[Math.floor(Math.random()*AI_NAMES.length)]+' (AI)']}); S.stake=stake;
+  S=newGame({seed:(Math.random()*2**31)|0,decks:[prof.deck.slice(),aiDeck()],names:[prof.name,AI_NAMES[Math.floor(Math.random()*AI_NAMES.length)]+' (AI)']}); S.stake=stake; applyTierPower(S,0);
   $('#oppName').textContent=S.players[1].name; show('scrMatch'); matchMusic(); nextTurn(); }
 $('#btnPlay').onclick=stakePick; $('#btnTut').onclick=startTutorial;
 function nextTurn(){ applySnapsAtTurnStart(S); startTurn(S); if(!S.tut&&aiShouldSnap(S,1)&&!S.players[1].snapped){ snap(S,1); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); sfx('oppsnap'); },900); }
@@ -122,7 +123,7 @@ function renderMatch(hideUids){ const me=S.players[0];
       <div class="tile${Lc.revealed?'':' hiddenLoc'}" style="--pc:${pc};${Lc.revealed?`background-image:url(art/loc_${d.id}.webp)`:''}">${Lc.revealed?`<span class="ab">${esc(L(PROV[d.prov].ab))}</span><b>${esc(L(d.name))}</b><small>${esc(L(d.text))}</small>`:`<b>?</b><small>เปิดเทิร์น ${li+1}</small>`}
         <div class="score"><span class="${b>a?'w':''}">${b}</span><span class="${a>b?'w':''}">${a}</span></div></div>
       <div class="side me${cap>4?' cap5':''}">${mine.map(cd).join('')}${qd.map(c=>cardHTML(c.def,{small:true,uid:c.uid,cls:'queued',tier:0})).join('')}</div></div>`; }).join('');
-  $('#hand').style.setProperty('--n',Math.max(me.hand.length,1)); $('#hand').innerHTML=me.hand.map(c=>cardHTML(c.def,{uid:c.uid,cost:cardCost(S,c),power:c.def.power+c.perm,tier:0,cls:(sel===c?'sel':'')+(cardCost(S,c)>me.energy?' dim':'')})).join('');
+  $('#hand').style.setProperty('--n',Math.max(me.hand.length,1)); $('#hand').innerHTML=me.hand.map(c=>cardHTML(c.def,{uid:c.uid,cost:cardCost(S,c),power:c.def.power+c.perm,tier:0,cls:(c.laikham?'lkc ':'')+(sel===c?'sel':'')+(cardCost(S,c)>me.energy?' dim':'')})).join('');
   $$('.loc').forEach(el=>el.classList.toggle('target',!!sel&&sel.def.type!=='temple'&&canPlay(S,0,sel,+el.dataset.li)));
   $('#templeSlot').classList.toggle('target',!!sel&&sel.def.type==='temple'&&canPlay(S,0,sel,'temple')); renderCoach(); }
 $('#hand').addEventListener('click',e=>{ if(busy) return; const el=e.target.closest('.card'); if(!el) return; const c=S.players[0].hand.find(x=>x.uid==el.dataset.uid); if(!c) return; if(sel===c){ sel=null; renderMatch(); sfx('tap'); return; } sel=c; renderMatch(); if(cardCost(S,c)>S.players[0].energy){ toast('พลังงานไม่พอ'); sfx('error'); } else sfx('select'); });
