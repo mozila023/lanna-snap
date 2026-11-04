@@ -532,3 +532,13 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .rptBtn{display:block;margin:6px auto 0;color:var(--muted)}
 .rptMini{margin-left:6px;padding:.2em .5em;font-size:12px;color:var(--muted)}
 .rptList{display:flex;flex-direction:column;gap:8px;margin-top:10px}.rptList .btn{font-size:15px}
+/* ---------- global bottom navigation ---------- */
+:root{--navH:calc(60px + env(safe-area-inset-bottom,0px))}
+#mainNav{position:absolute;left:0;right:0;bottom:0;z-index:8;height:var(--navH);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;background:linear-gradient(rgba(23,18,31,.92),#120d19);backdrop-filter:blur(8px);border-top:1px solid rgba(232,182,74,.25)}
+#mainNav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 0;font-size:11px;box-shadow:none;position:relative}
+#mainNav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+#mainNav button.on{color:var(--gold2)}
+#mainNav button.on::before{content:"";position:absolute;top:0;left:26%;right:26%;height:3px;border-radius:0 0 3px 3px;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+#mainNav button.on svg{filter:drop-shadow(0 0 6px rgba(232,182,74,.7))}
+#app.withNav .scr{bottom:var(--navH)}
+#app.withNav #scrMatch,#app.withNav #scrLogin{bottom:0}

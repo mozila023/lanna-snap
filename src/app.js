@@ -32,7 +32,8 @@ function applyServer(s){ if(!prof||!s) return; Object.assign(prof,{bia:s.bia,ran
 async function startEcon(){ ECON=false; if(!sb||!user) return; try{ const {data,error}=await sb.rpc('init_account'); if(!error&&data&&data.owned){ ECON=true; applyServer(data); } else if(error) console.warn('server economy unavailable:',error.message); }catch(e){ console.warn('server economy unavailable',e); } }
 
 /* ---------- screens ---------- */
-function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop'){ renderShop(); if(ECON&&!prof.shop.offers) rpc('shop_offers').then(()=>{ if(!$('#scrShop').hidden) renderShop(); }).catch(err=>toast(err.message)); } if(id==='scrProfile') renderProfile(); }
+function syncNav(){ const cur=$$('.scr').find(s=>!s.hidden); const hide=!cur||cur.id==='scrMatch'||cur.id==='scrLogin'; $('#mainNav').hidden=hide; $('#app').classList.toggle('withNav',!hide); }
+function show(id){ $$('.scr').forEach(s=>s.hidden=s.id!==id); setTimeout(syncNav,0); $$('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.go===id)); if(id==='scrHome') renderHome(); if(id==='scrDeck') renderDeck(); if(id==='scrColl') renderColl(); if(id==='scrShop'){ renderShop(); if(ECON&&!prof.shop.offers) rpc('shop_offers').then(()=>{ if(!$('#scrShop').hidden) renderShop(); }).catch(err=>toast(err.message)); } if(id==='scrProfile') renderProfile(); }
 document.addEventListener('click',e=>{ const g=e.target.closest('[data-go]'); if(g) show(g.dataset.go); });
 const sfx=n=>{ try{ AUD.sfx(n); }catch(e){} };
 function toast(msg,ms=1400){ const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(t._t); t._t=setTimeout(()=>t.hidden=true,ms); }
@@ -405,7 +406,7 @@ $('#shopBody').addEventListener('click',async e=>{ const st=shopState();
 
 /* ---------- auth ---------- */
 function migrate(){ for(const id in prof.owned){ const o=prof.owned[id]; if(o.dup===undefined){ o.dup=Math.floor((o.boost||0)/5); delete o.boost; } } }
-async function enter(){ migrate(); $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); else if(ECON&&!prof.tutReward) setTimeout(tutReward,700); else setTimeout(topupPopup,700); setTimeout(()=>{ if(AUD.current) toast('♪ '+AUD.current.th,1800); },600); }
+async function enter(){ setTimeout(syncNav,0); migrate(); $('#scrLogin').hidden=true; if(prof.tut===undefined) prof.tut=(prof.wins+prof.losses)>0; if(prof.tutReward===undefined) prof.tutReward=prof.tut; show('scrHome'); if(!prof.tut) setTimeout(tutIntro,250); else if(ECON&&!prof.tutReward) setTimeout(tutReward,700); else setTimeout(topupPopup,700); setTimeout(()=>{ if(AUD.current) toast('♪ '+AUD.current.th,1800); },600); }
 document.addEventListener('pointerdown',()=>{ try{ AUD.unlock(); }catch(e){} },{once:false,passive:true});
 function soundBtns(){ const p=AUD.pref; $$('.btnMusic').forEach(b=>{ b.classList.toggle('off',!p.music); b.setAttribute('aria-pressed',p.music); }); $$('.btnSfx').forEach(b=>{ b.classList.toggle('off',!p.sfx); b.setAttribute('aria-pressed',p.sfx); }); }
 document.addEventListener('click',e=>{ if(e.target.closest('.btnMusic')){ AUD.setMusic(!AUD.pref.music); soundBtns(); if(AUD.pref.music&&AUD.current) toast('♪ '+AUD.current.th); } else if(e.target.closest('.btnSfx')){ AUD.setSfx(!AUD.pref.sfx); soundBtns(); sfx('tap'); } else if(e.target.closest('.btnNext')){ const t=AUD.shuffle(); if(t){ toast('♪ '+t.th); showTrack(t); } } });
@@ -413,7 +414,7 @@ soundBtns();
 $('#btnGuest').onclick=async()=>{ user=null; cloudOK=false; ECON=false; prof=loadLocal()||freshProfile(); await saveProfile(); enter(); };
 $('#btnGoogle').onclick=async()=>{ if(!sb){ $('#loginMsg').textContent='เชื่อมต่อระบบล็อกอินไม่ได้ ลองเล่นแบบผู้เยี่ยมชมก่อน'; return; }
   try{ const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin+location.pathname}}); if(error) $('#loginMsg').textContent='ล็อกอิน Google ยังไม่พร้อม: '+error.message; }catch(e){ $('#loginMsg').textContent='เปิดหน้าล็อกอินไม่ได้ในหน้านี้ ลองเปิดจากเว็บไซต์ของเกม'; } };
-$('#btnLogout').onclick=async()=>{ try{ if(NET) netAbort(); }catch(e){} if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; prof=null; cloudOK=false; ECON=false; $('#scrHome').hidden=true; $('#scrLogin').hidden=false; };
+$('#btnLogout').onclick=async()=>{ try{ if(NET) netAbort(); }catch(e){} if(sb&&user){ try{ await sb.auth.signOut(); }catch(e){} } user=null; prof=null; cloudOK=false; ECON=false; $$('.scr').forEach(s=>s.hidden=s.id!=='scrLogin'); syncNav(); };
 (async()=>{ if(sb){ try{ const {data}=await sb.auth.getSession(); if(data&&data.session){ user=data.session.user; const cl=await loadCloud(); const gname=(user.user_metadata&&(user.user_metadata.full_name||user.user_metadata.name))||'ผู้เล่น';
       if(cl.status==='ok'){ prof=cl.data; cloudOK=true; }
       else if(cl.status==='none'){ prof=loadLocal()||freshProfile(); if(!prof.uid) prof.name=gname; cloudOK=true; }

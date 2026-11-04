@@ -29,7 +29,6 @@
       <div class="homeRank" id="homeRank"></div>
       <div class="onlineRow"><button class="btn snap" id="btnRanked" type="button">แมตช์แรงค์</button><button class="btn ghost" id="btnRoom" type="button">ห้องเพื่อน</button></div>
     </div>
-    <nav class="tabs"><button data-go="scrHome" class="on" type="button">หน้าหลัก</button><button data-go="scrDeck" type="button">เด็ค</button><button data-go="scrColl" type="button">คอลเลกชัน</button><button data-go="scrShop" type="button">ร้านค้า</button></nav>
   </section>
   <section id="scrDeck" class="scr" hidden>
     <header class="topbar"><button class="mini" data-go="scrHome" type="button">‹ กลับ</button><div class="who"><span>เด็คของฉัน</span><small id="deckCount">0/12</small></div><button id="btnAutoDeck" class="mini" type="button">จัดให้</button></header>
@@ -63,6 +62,7 @@
     </div>
     <div id="toast" class="toast" hidden></div>
   </section>
+  <nav class="tabs" id="mainNav" hidden aria-label="เมนูหลัก"><button data-go="scrHome" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>หน้าหลัก</span></button><button data-go="scrDeck" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="11" height="15" rx="2"/><path d="M9 3h9a2 2 0 0 1 2 2v13"/></svg><span>เด็ค</span></button><button data-go="scrColl" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg><span>คอลเลกชัน</span></button><button data-go="scrShop" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h16l-1.5 11h-13z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg><span>ร้านค้า</span></button><button data-go="scrProfile" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-7 8-7s7 2.5 8 7"/></svg><span>โปรไฟล์</span></button></nav>
   <div id="modal" class="modal" hidden><div class="mBox"><button class="mClose" type="button" aria-label="ปิด">✕</button><div id="mBody"></div></div></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
