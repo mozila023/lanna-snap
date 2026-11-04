@@ -329,3 +329,53 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .spareGot{display:flex;align-items:center;gap:10px;justify-content:center;padding:8px;border-radius:12px;background:rgba(95,211,138,.1);border:1px solid rgba(95,211,138,.35);margin:6px 0}
 .spareGot .card{--w:42px}
 .gIcon.bag::after{content:"×3"}
+/* =========================================================
+   Upgrade tiers v2 — each tier clearly visible, cumulative
+   t1 กรอบผ้าทอ · t2 ทะลุกรอบ · t3 ภาพนูน · t4 เรืองแสง · t5 ทองคำเปลว · t6 ลายคำ
+   ========================================================= */
+.card .pips{position:absolute;left:0;right:0;bottom:-3.5cqw;z-index:3;display:flex;justify-content:center;gap:1.6cqw;pointer-events:none}
+.card .pips i{width:5.5cqw;height:5.5cqw;transform:rotate(45deg);background:linear-gradient(135deg,#fff3c4,#e8b64a 60%,#8a5a12);box-shadow:0 0 0 .7cqw #2a1806,0 0 3cqw rgba(255,210,120,.8)}
+.card.t6 .pips i{background:linear-gradient(135deg,#fff,#ffd98a 40%,#ff9ae6 70%,#8ee8ff)}
+/* t1 woven frame (teen jok pattern) */
+.card.t1 .frame{border:0;-webkit-mask:none;mask:none;background:none;box-shadow:none}
+.card.t1::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;padding:4.5cqw;
+  background:repeating-linear-gradient(45deg,var(--pc) 0 2.6cqw,#f3d48a 2.6cqw 3.6cqw,#5a1d10 3.6cqw 5cqw,#f3d48a 5cqw 6cqw),var(--pc);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  box-shadow:inset 0 0 0 .8cqw rgba(0,0,0,.5)}
+.card.t1 .nm{padding-bottom:8cqw}
+/* t2 break-out: art pops above the top edge */
+.card.t2 .art{overflow:visible;clip-path:inset(-16% -4% 0 -4% round 9cqw)}
+.card.t2 .art img{transform:scale(1.14) translateY(-9%);filter:drop-shadow(0 4cqw 4cqw rgba(0,0,0,.6));transition:transform .25s}
+.card.t2:hover .art img{transform:scale(1.18) translateY(-12%)}
+/* t3 3D: idle tilt + specular sheen */
+.card.t3{animation:idleTilt 5s ease-in-out infinite;transform-style:preserve-3d}
+.card.t3 .art::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(120deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.28) 45%,rgba(255,255,255,0) 60%);background-size:250% 100%;animation:sheen 5s ease-in-out infinite;mix-blend-mode:soft-light}
+@keyframes idleTilt{0%,100%{transform:perspective(600px) rotateY(-7deg) rotateX(3deg)}50%{transform:perspective(600px) rotateY(7deg) rotateX(-3deg)}}
+@keyframes sheen{0%,100%{background-position:100% 0}50%{background-position:0 0}}
+/* t4 glow aura in province colour */
+.card.t4{box-shadow:0 0 6cqw color-mix(in srgb,var(--pc) 85%,#fff),0 0 16cqw color-mix(in srgb,var(--pc) 55%,transparent);animation:idleTilt 5s ease-in-out infinite,aura 2.4s ease-in-out infinite}
+.card.t4 .art::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 110%,color-mix(in srgb,var(--pc) 70%,#fff) ,transparent 55%);mix-blend-mode:screen;opacity:.55;animation:breathe 2.4s ease-in-out infinite}
+@keyframes aura{50%{box-shadow:0 0 10cqw color-mix(in srgb,var(--pc) 95%,#fff),0 0 26cqw color-mix(in srgb,var(--pc) 65%,transparent)}}
+/* t5 gold leaf: gold frame + foil sweep + gold name */
+.card.t5::after{background:linear-gradient(135deg,#fff3c4,#e8b64a 30%,#8a5a12 50%,#ffe08a 70%,#b07a1a);}
+.card.t5 .art::after{content:"";position:absolute;inset:-50%;background:linear-gradient(115deg,transparent 40%,rgba(255,230,150,.6) 48%,rgba(255,255,255,.85) 50%,rgba(255,230,150,.6) 52%,transparent 60%);animation:foil 2.8s linear infinite;mix-blend-mode:screen;opacity:1}
+.card.t5 .nm span{background:linear-gradient(#fff6d0,#e8b64a);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 1px 1px #000)}
+.card.t5{box-shadow:0 0 6cqw rgba(255,210,110,.9),0 0 16cqw rgba(232,182,74,.5)}
+/* t6 ลายคำ: black lacquer frame with gold Lanna motif + prism */
+.card.t6::after{padding:5.5cqw;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23120a08'/%3E%3Cpath d='M8 1 L10.5 8 L8 15 L5.5 8Z M1 8 L8 5.5 L15 8 L8 10.5Z' fill='%23e8b64a'/%3E%3Ccircle cx='8' cy='8' r='1.6' fill='%23fff3c4'/%3E%3C/svg%3E") 0 0/7cqw 7cqw,#120a08;box-shadow:inset 0 0 0 .8cqw #e8b64a,inset 0 0 0 1.6cqw #120a08,inset 0 0 0 2.2cqw #e8b64a}
+.card.t6 .art::before{content:"";position:absolute;inset:-50%;z-index:1;background:conic-gradient(from 0deg,rgba(255,120,120,.3),rgba(255,220,120,.3),rgba(120,255,180,.3),rgba(120,180,255,.3),rgba(255,120,220,.3),rgba(255,120,120,.3));animation:spin 6s linear infinite;mix-blend-mode:screen;background-size:auto}
+.card.t6{box-shadow:0 0 8cqw rgba(255,215,120,1),0 0 22cqw rgba(255,160,220,.45)}
+/* dual rainbow sits above the tier frame */
+.card.dual::before{z-index:2}
+/* no tier motion on small strips / match */
+.card.small.t3,.card.small.t4{animation:none}
+#scrMatch .card{animation-name:none}
+#scrMatch .card.pop{animation-name:pop}
+/* upgrade moment */
+.card.evolve{animation:evolve .9s cubic-bezier(.2,.9,.25,1.3)!important}
+@keyframes evolve{0%{filter:brightness(4) saturate(0);transform:scale(.85)}40%{filter:brightness(2);transform:scale(1.12)}100%{filter:none;transform:none}}
+.banner.up span{color:#fff3c4;border-color:#5fd38a;text-shadow:0 0 22px rgba(95,211,138,.95),0 3px 0 #0e2615}
+@media (prefers-reduced-motion:reduce){ .card.t3,.card.t4,.card.t3 .art::before,.card.t4 .art::after,.card.t5 .art::after,.card.t6 .art::before{animation:none!important} }
+.card.t5 .art::after{opacity:.5;animation-duration:3.4s}
+.card.t5::after{padding:5cqw}
+.card.t6::after{padding:6cqw}
