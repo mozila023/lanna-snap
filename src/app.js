@@ -23,7 +23,7 @@ async function loadCloud(){ // -> {status:'ok',data} | {status:'none'} | {status
 
 /* ---------- server economy (signed in): the server owns cowries, cards, spares, tiers and rank ---------- */
 let ECON=false;
-const ERR_TH={'not enough cowries':'เบี้ยไม่พอ','not enough spares':'อะไหล่ไม่พอ','gift already claimed today':'รับของขวัญวันนี้ไปแล้ว','daily limit reached':'ซื้อครบโควตาวันนี้แล้ว','already owned':'มีการ์ดนี้แล้ว',"card is not in today's shop":'การ์ดนี้ไม่ได้ขายวันนี้','reward already claimed':'รับรางวัลนี้ไปแล้ว','already max tier':'อัปเกรดสูงสุดแล้ว','card not owned':'ยังไม่มีการ์ดนี้','stake too high':'เบี้ยไม่พอสำหรับเดิมพันนี้','collection complete':'มีการ์ดครบทุกใบแล้ว','too many reports today':'รายงานครบจำนวนต่อวันแล้ว'};
+const ERR_TH={'too many slips today':'ส่งสลิปวันนี้ครบ 3 ครั้งแล้ว พรุ่งนี้ค่อยส่งใหม่นะ','slip not uploaded':'อัปโหลดสลิปไม่สำเร็จ ลองใหม่อีกครั้ง','bad slip path':'ไฟล์สลิปไม่ถูกต้อง','not enough cowries':'เบี้ยไม่พอ','not enough spares':'อะไหล่ไม่พอ','gift already claimed today':'รับของขวัญวันนี้ไปแล้ว','daily limit reached':'ซื้อครบโควตาวันนี้แล้ว','already owned':'มีการ์ดนี้แล้ว',"card is not in today's shop":'การ์ดนี้ไม่ได้ขายวันนี้','reward already claimed':'รับรางวัลนี้ไปแล้ว','already max tier':'อัปเกรดสูงสุดแล้ว','card not owned':'ยังไม่มีการ์ดนี้','stake too high':'เบี้ยไม่พอสำหรับเดิมพันนี้','collection complete':'มีการ์ดครบทุกใบแล้ว','too many reports today':'รายงานครบจำนวนต่อวันแล้ว'};
 async function rpc(fn,args){ const {data,error}=await sb.rpc(fn,args||{}); if(error){ throw new Error(ERR_TH[error.message]||('เซิร์ฟเวอร์ไม่ยอมรับ: '+error.message)); } if(data&&data.owned) applyServer(data); return data; }
 function applyServer(s){ if(!prof||!s) return; Object.assign(prof,{bia:s.bia,rank:s.rank,wins:s.wins,losses:s.losses,cl:s.cl,tutReward:s.tutReward,firstTopup:s.firstTopup,owned:s.owned});
   prof.shop={day:today(),ov:2,gift:!!s.shop.gift,bags:s.shop.bags||0,offers:s.shop.offers||null,bought:s.shop.bought||[]};
@@ -327,7 +327,7 @@ $('#btnRanked').onclick=()=>findRanked();
 $('#btnRoom').onclick=()=>roomMenu();
 
 /* ---------- donate to the creator (first donation: 1,000 cowries, granted by the creator after checking the slip) ---------- */
-const DONATE={ promptpay:'', name:'ผู้สร้าง Lanna Snap', contact:'' }; // promptpay: phone (0812345678) or 13-digit ID · contact: where players send the slip
+const DONATE={ promptpay:'', name:'ผู้สร้าง Lanna Snap' }; // promptpay: phone (0812345678) or 13-digit ID
 const DONATE_BIA=1000;
 function ppPayload(id){ const d=String(id).replace(/\D/g,''); let acc; if(d.length===10&&d[0]==='0') acc='01'+'13'+('0066'+d.slice(1)); else if(d.length===13) acc='02'+'13'+d; else if(d.length===15) acc='03'+'15'+d; else return null;
   const f=(t,v)=>t+String(v.length).padStart(2,'0')+v; const mer=f('00','A000000677010111')+acc;
@@ -336,18 +336,30 @@ function ppPayload(id){ const d=String(id).replace(/\D/g,''); let acc; if(d.leng
   return p+crc.toString(16).toUpperCase().padStart(4,'0'); }
 function loadQR(){ return window.QRCode?Promise.resolve():new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; s.onload=res; s.onerror=rej; document.head.appendChild(s); }); }
 function copyText(text,el){ const done=()=>toast('คัดลอกแล้ว'); try{ navigator.clipboard.writeText(text).then(done,()=>{ if(el){ const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r); } toast('เลือกไว้แล้ว กดคัดลอกได้เลย'); }); }catch(e){ toast('เลือกข้อความแล้วคัดลอกเองนะ'); } }
+// shrink a photo of the slip to a small JPEG (keeps uploads fast and under the 3 MB limit)
+function slipJpeg(file){ return new Promise((res,rej)=>{ const url=URL.createObjectURL(file); const im=new Image(); im.onload=()=>{ const k=Math.min(1,1400/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k); c.getContext('2d').drawImage(im,0,0,c.width,c.height); URL.revokeObjectURL(url); c.toBlob(bl=>bl?res(bl):rej(new Error('อ่านรูปไม่ได้')),'image/jpeg',.85); }; im.onerror=()=>{ URL.revokeObjectURL(url); rej(new Error('ไฟล์นี้ไม่ใช่รูปภาพ')); }; im.src=url; }); }
+function donateCelebrate(before){ closeModal(); renderShop(); renderTop(); sfx('legend'); FX.confetti(90); FX.coins($('#shopBody')||$('#app'),$('.biaMirror')||$('#pBia'),14); toast(`ได้รับ ${DONATE_BIA.toLocaleString()} เบี้ยแล้ว ขอบคุณที่สนับสนุน!`,2800); FX.count($('.biaMirror'),before,prof.bia,1200); }
+const SLIP_TXT={pending:'⏳ ส่งสลิปแล้ว รอผู้สร้างตรวจ (ปกติไม่เกิน 1 วัน)',rejected:'❌ สลิปล่าสุดไม่ผ่านการตรวจ ส่งใหม่ได้',granted:'✅ ได้รับเบี้ยแล้ว ขอบคุณครับ'};
 function donateModal(){
   if(!user){ modal(`<div class="result"><h2 style="font-size:24px">โดเนทผู้สร้าง</h2><p>ล็อกอินด้วย Google ก่อน<br><small class="muted">เบี้ยจากการโดเนทจะเข้าบัญชีของคุณ ผู้เยี่ยมชมรับไม่ได้</small></p><div class="actions"><button class="btn end" id="okD" type="button">รับทราบ</button></div></div>`,b=>{ b.querySelector('#okD').onclick=closeModal; }); return; }
   const payload=DONATE.promptpay?ppPayload(DONATE.promptpay):null; const got=!!prof.firstTopup;
   modal(`<div class="result donate"><h2 style="font-size:24px">โดเนทผู้สร้าง</h2>
     <p>${got?'ขอบคุณที่เคยสนับสนุนแล้ว ❤ โดเนทเพิ่มได้เสมอ':`โดเนทเท่าไหร่ก็ได้ ครั้งแรกรับ <b class="gain">${DONATE_BIA.toLocaleString()} เบี้ย</b>`}</p>
     ${payload?`<div class="qrBox"><div id="qr"></div><small>พร้อมเพย์ · ${esc(DONATE.name)}</small></div>`:'<p class="muted">ผู้สร้างกำลังตั้งค่าช่องทางโดเนท เร็วๆ นี้</p>'}
-    ${got?'':`<ol class="dSteps"><li>สแกน QR ด้วยแอปธนาคาร ใส่ยอดเท่าไหร่ก็ได้</li><li>ส่งสลิปพร้อม <b>รหัสผู้เล่น</b> ข้างล่าง${DONATE.contact?` ไปที่ <b>${esc(DONATE.contact)}</b>`:''}</li><li>ผู้สร้างตรวจแล้ว เบี้ยเข้าบัญชีอัตโนมัติ</li></ol>
-    <div class="pid"><small>รหัสผู้เล่น</small><code id="pidTxt">${esc(user.id)}</code><button class="mini" id="pidCopy" type="button">คัดลอก</button></div>
-    <div class="actions"><button class="btn ghost" id="dCheck" type="button">ตรวจสอบว่าได้เบี้ยหรือยัง</button></div>`}</div>`,async b=>{
+    ${got?'':`<ol class="dSteps"><li>สแกน QR ด้วยแอปธนาคาร ใส่ยอดเท่าไหร่ก็ได้</li><li>กด <b>แนบสลิป</b> แล้วเลือกรูปสลิป</li><li>ผู้สร้างตรวจแล้ว เบี้ยเข้าบัญชีเอง</li></ol>
+    <p class="slipState" id="slipState"></p>
+    <div class="actions"><label class="btn play slipBtn${payload?'':' off'}"><input type="file" accept="image/*" id="slipFile" hidden${payload?'':' disabled'}>แนบสลิป</label><button class="btn ghost" id="dCheck" type="button">ตรวจสอบสถานะ</button></div>`}</div>`,async b=>{
       if(payload){ try{ await loadQR(); new QRCode(b.querySelector('#qr'),{text:payload,width:200,height:200,correctLevel:QRCode.CorrectLevel.M}); }catch(e){ b.querySelector('#qr').textContent='โหลด QR ไม่ได้ · พร้อมเพย์ '+DONATE.promptpay; } }
-      const cp=b.querySelector('#pidCopy'); if(cp) cp.onclick=()=>copyText(user.id,b.querySelector('#pidTxt'));
-      const ck=b.querySelector('#dCheck'); if(ck) ck.onclick=async()=>{ ck.disabled=true; try{ const before=prof.bia; await rpc('get_state'); if(prof.firstTopup){ closeModal(); renderShop(); renderTop(); sfx('legend'); FX.confetti(90); FX.coins($('#shopBody')||$('#app'),$('.biaMirror')||$('#pBia'),14); toast(`ได้รับ ${DONATE_BIA.toLocaleString()} เบี้ยแล้ว ขอบคุณที่สนับสนุน!`,2800); FX.count($('.biaMirror'),before,prof.bia,1200); } else { toast('ยังไม่ได้ · ผู้สร้างอาจยังไม่ได้ตรวจสลิป ลองใหม่ทีหลังนะ',2600); ck.disabled=false; } }catch(err){ toast(err.message); ck.disabled=false; } }; }); }
+      const st=b.querySelector('#slipState'); if(!st) return; const ck=b.querySelector('#dCheck'), fi=b.querySelector('#slipFile');
+      const show=d=>{ st.textContent=d&&d.latest?SLIP_TXT[d.latest]||'':''; st.className='slipState '+(d&&d.latest||''); };
+      const status=async()=>{ const before=prof.bia; const d=await rpc('donation_status'); if(d&&d.granted){ await rpc('get_state'); donateCelebrate(before); return null; } show(d); return d; };
+      status().catch(()=>{});
+      ck.onclick=async()=>{ ck.disabled=true; try{ const d=await status(); if(d&&d.latest!=='pending'&&d.latest!=='rejected') toast('ยังไม่ได้ส่งสลิป · โอนแล้วกดแนบสลิปได้เลย',2400); else if(d&&d.latest==='pending') toast('ยังรอตรวจอยู่ ลองใหม่ทีหลังนะ',2200); }catch(err){ toast(err.message); } if(ck.isConnected) ck.disabled=false; };
+      fi.onchange=async()=>{ const f=fi.files&&fi.files[0]; fi.value=''; if(!f) return; const lb=fi.parentElement; lb.classList.add('off'); st.textContent='กำลังส่งสลิป…'; st.className='slipState';
+        try{ const blob=await slipJpeg(f); const path=`${user.id}/${Date.now()}.jpg`;
+          const {error}=await sb.storage.from('slips').upload(path,blob,{contentType:'image/jpeg',upsert:false}); if(error) throw new Error(/row-level|policy/i.test(error.message)?'ส่งสลิปครบจำนวนแล้ว ติดต่อผู้สร้างนะ':'อัปโหลดไม่สำเร็จ: '+error.message);
+          show(await rpc('submit_slip',{path})); sfx('coin'); toast('ส่งสลิปแล้ว ขอบคุณครับ ❤',2400); }catch(err){ st.textContent=''; toast(err.message,2600); }
+        lb.classList.remove('off'); }; }); }
 
 /* ---------- player profile ---------- */
 function avatarHTML(){ const a=prof.avatar; if(a&&a.type==='card'&&CARDS[a.id]) return `<img src="art/${a.id}.webp" alt="">`; if(a&&(a.type==='img'||a.type==='google')&&a.src) return `<img src="${esc(a.src)}" alt="" referrerpolicy="no-referrer">`;
@@ -365,7 +377,7 @@ function renderProfile(){ const owned=Object.keys(prof.owned).filter(id=>CARDS[i
      <div><b>${owned.length}/${PLAYABLE.length}</b><small>การ์ดที่มี</small></div><div><b>${legends}</b><small>ตำนาน</small></div><div><b class="rainbowTxt">${duals}</b><small>สองแผ่นดิน</small></div><div><b>${laikham}</b><small>ขั้นลายคำ</small></div></div>
    <h4>การ์ดแต่ละจังหวัด</h4>
    <div class="pfProv">${byProv.map(([k,n,t])=>`<div><i style="--c:${PROV[k].col};--k:${PROV[k].ink}">${esc(L(PROV[k].ab))}</i><span class="bar"><em style="width:${t?n/t*100:0}%;background:${PROV[k].col}"></em></span><small>${n}/${t}</small></div>`).join('')}</div>
-   ${user?`<div class="pid"><small>รหัสผู้เล่น (ใช้ตอนโดเนท)</small><code id="pfPid">${esc(user.id)}</code><button class="mini" id="pfPidCopy" type="button">คัดลอก</button></div>`:''}
+   ${user?`<div class="pid"><small>รหัสผู้เล่น</small><code id="pfPid">${esc(user.id)}</code><button class="mini" id="pfPidCopy" type="button">คัดลอก</button></div>`:''}
    <p class="muted">${prof.created?'เริ่มเล่นเมื่อ '+new Date(prof.created).toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'}):''}${maxTier?` · อัปสูงสุด ${TIERS[maxTier]}`:''}</p>`;
   const save=async()=>{ const v=$('#pfNameIn').value.replace(/\s+/g,' ').trim(); if(v.length<2){ $('#pfMsg').textContent='ชื่อต้องยาว 2–20 ตัวอักษร'; sfx('error'); return; } prof.name=v; await saveProfile(); renderTop(); $('#pfMsg').textContent='บันทึกชื่อแล้ว'; sfx('coin'); };
   $('#pfSave').onclick=save; $('#pfNameIn').onkeydown=e=>{ if(e.key==='Enter') save(); };

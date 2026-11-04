@@ -552,3 +552,7 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .pid{display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:center;padding:8px;border-radius:12px;background:rgba(0,0,0,.3);margin:6px 0}
 .pid small{width:100%;text-align:center;color:var(--muted);font-size:12px}
 .pid code{font-size:11px;word-break:break-all;color:var(--gold2);user-select:all;max-width:100%}
+.slipState{min-height:1.2em;font-size:13px;margin:4px 0;color:var(--muted)}
+.slipState.pending{color:var(--gold2)}.slipState.rejected{color:#ff8a7a}.slipState.granted{color:#9dffbf}
+.slipBtn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.slipBtn.off{opacity:.5;pointer-events:none}
