@@ -48,7 +48,7 @@ function cardView(id){ const def=CARDS[id]; const own=prof.owned[id]; const inMa
     <div class="lore"><b>เรื่องจริงหลังการ์ด</b><br>${esc(L(def.lore))}</div>${upHtml}</div>`,b=>{
     const btn=b.querySelector('#btnUp'); if(btn) btn.onclick=async()=>{ own.dup=(own.dup||0)-nextB; prof.bia-=nextC; own.tier++; prof.cl++; await maybeUnlock(); await saveProfile(); cardView(id); refreshScreens(); sfx('upgrade'); FX.banner(`${TIERS[own.tier]}!`,'up'); const cv2=$('#mBody .card'); if(cv2){ cv2.classList.add('evolve'); cv2.classList.add('pop'); setTimeout(()=>{ FX.burst(cv2,'#ffd98a',34); FX.shimmer(cv2,'#ffe7a3',20); },150); } };
     const cv=b.querySelector('.card'); if(tier>=3&&cv){ cv.addEventListener('pointermove',e=>{ const r=cv.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5; cv.style.transform=`perspective(500px) rotateY(${x*18}deg) rotateX(${-y*18}deg)`; cv.querySelector('.art img').style.transform=`scale(1.15) translate(${-x*10}px,${-y*10}px)`; }); cv.addEventListener('pointerleave',()=>{ cv.style.transform=''; }); } }); }
-async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&!isDual(c)); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,dup:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
+async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rarityOf(c)==='common'); if(!pool.length) return; const c=pool[Math.floor(Math.random()*pool.length)]; prof.owned[c.id]={tier:0,dup:0}; await wait(50); toast(`ปลดล็อกการ์ดใหม่! ${L(c.name)}`,2200); }
 
 /* ---------- home / deck / collection ---------- */
 function renderTop(){ if(!prof) return; $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
@@ -105,7 +105,11 @@ function applyTierPower(S,p){ const P=S.players[p]; for(const c of [...P.deck,..
 function startMatch(stake=0){ if(prof.deck.length<12){ toast('จัดเด็คให้ครบ 12 ใบก่อนนะ'); show('scrDeck'); return; }
   S=newGame({seed:(Math.random()*2**31)|0,decks:[prof.deck.slice(),aiDeck()],names:[prof.name,AI_NAMES[Math.floor(Math.random()*AI_NAMES.length)]+' (AI)']}); S.stake=stake; applyTierPower(S,0);
   $('#oppName').textContent=S.players[1].name; show('scrMatch'); matchMusic(); nextTurn(); }
-$('#btnPlay').onclick=stakePick; $('#btnTut').onclick=startTutorial;
+$('#btnPlay').onclick=stakePick;
+$('#btnReset').onclick=()=>{ const legends=Object.keys(prof.owned).filter(id=>CARDS[id]&&rarityOf(CARDS[id])!=='common').length;
+  modal(`<div class="result"><h2 style="font-size:24px">เริ่มเกมใหม่?</h2><p>ล้างเซฟทั้งหมด: การ์ด ${Object.keys(prof.owned).length} ใบ (ตำนาน ${legends} ใบ) เบี้ย ${prof.bia} และระดับอัปเกรด<br>แล้วเริ่มใหม่ด้วยเด็คเริ่มต้น (ตำนาน 1 ใบ) + โหมดสอนเล่น + รางวัล 10 ใบ</p><p class="loss">ย้อนกลับไม่ได้</p><div class="actions"><button class="btn ghost" id="rsNo" type="button">ยกเลิก</button><button class="btn end" id="rsYes" type="button">ล้างแล้วเริ่มใหม่</button></div></div>`,b=>{
+    b.querySelector('#rsNo').onclick=closeModal;
+    b.querySelector('#rsYes').onclick=async()=>{ const name=prof.name; prof=freshProfile(); if(user) prof.name=name; await saveProfile(); closeModal(); enter(); }; }); }; $('#btnTut').onclick=startTutorial;
 function nextTurn(){ applySnapsAtTurnStart(S); startTurn(S); if(!S.tut&&aiShouldSnap(S,1)&&!S.players[1].snapped){ snap(S,1); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); sfx('oppsnap'); },900); }
   FX.banner(S.turn===S.maxTurn?'เทิร์นสุดท้าย!':`เทิร์น ${S.turn}`,S.turn===S.maxTurn?'final':''); sfx('turn');
   if(S.turn<=3) setTimeout(()=>flashLoc(S.turn-1),200);

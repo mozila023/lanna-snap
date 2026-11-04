@@ -471,3 +471,4 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .card.t5::after{inset:-21.87% -17.96% -16.40% -18.34%}
 .card.t6::after{inset:-23.27% -20.56% -18.26% -20.56%}
 .mClose{z-index:10}
+.homeMini{display:flex;gap:8px}
