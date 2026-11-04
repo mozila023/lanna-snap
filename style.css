@@ -506,3 +506,25 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .avOpt.on,.avOpt:hover{border-color:var(--gold2);box-shadow:0 0 12px rgba(232,182,74,.7)}
 .topbar .whoBtn{flex-direction:row;align-items:center}
 .whoTxt>span,.whoTxt>small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+/* ---------- online ---------- */
+.onlineRow{display:flex;gap:10px;width:min(360px,92%)}.onlineRow .btn{flex:1;font-size:17px}
+.homeRank{display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:999px;background:rgba(0,0,0,.35);font-size:14px}
+.homeRank small{color:var(--muted);font-size:12px}
+.rkDot{width:12px;height:12px;border-radius:50%;background:var(--rc);box-shadow:0 0 10px var(--rc)}
+.srch .srchRing{width:84px;height:84px;margin:4px auto 6px;border-radius:50%;border:4px solid rgba(232,182,74,.2);border-top-color:var(--gold);animation:spin 1s linear infinite}
+.roomCode{font-family:var(--fd);font-size:44px;letter-spacing:.25em;text-align:center;color:var(--gold2);background:rgba(0,0,0,.35);border-radius:14px;padding:6px 0 6px .25em;margin:6px 0;user-select:all}
+.rmJoin{display:flex;gap:8px;width:100%}
+.rmJoin input{flex:1;min-width:0;font-family:var(--fd);font-size:22px;letter-spacing:.2em;text-transform:uppercase;text-align:center;color:var(--ink);background:rgba(255,255,255,.06);border:1.5px solid #5a4a6a;border-radius:12px;padding:.35em .4em}
+.rmJoin input:focus{outline:none;border-color:var(--gold)}
+.oppAv{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;overflow:hidden;vertical-align:middle;margin-right:8px;background:var(--gold);box-shadow:0 0 0 2px var(--gold2)}
+.oppAv img{width:100%;height:100%;object-fit:cover;object-position:50% 20%}.oppAv b{font-size:13px;color:#2a1806}
+.oppRank{font-size:11px;font-weight:500;margin-left:4px;color:var(--muted)}
+.btn.end.waiting{filter:saturate(.4) brightness(.85);animation:breathe 1.6s ease-in-out infinite}
+.btn.end[data-clock]:not([data-clock=""])::after{content:" · " attr(data-clock) "s";color:#b0242a}
+.rankBox{margin:8px auto;width:min(300px,100%);padding:10px 14px;border-radius:14px;background:rgba(0,0,0,.3);border:1.5px solid var(--rc);display:flex;flex-direction:column;gap:4px;text-align:center}
+.rankBox b{font-family:var(--fb);font-size:20px;color:var(--rc)}.rankBox em{font-style:normal;font-weight:700}
+.rankBox .rbar{height:8px;border-radius:4px;background:rgba(255,255,255,.1);overflow:hidden}.rankBox .rbar i{display:block;height:100%;background:var(--rc)}
+.rankBox small{color:var(--muted);font-size:12px}
+.pfRank{grid-column:span 4;flex-direction:row!important;justify-content:center;gap:10px!important;border:1.5px solid var(--rc)}
+.pfRank b{color:var(--rc)!important;font-family:var(--fb)!important}
+.onlineRow .btn{white-space:nowrap}

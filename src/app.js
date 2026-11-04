@@ -12,7 +12,7 @@ const isDual=c=>c.prov.length>1; const rarityOf=c=>isDual(c)?'dual':c.type==='le
 const RAR={common:{n:'ทั่วไป',p:86},legend:{n:'ตำนาน',p:12},dual:{n:'ตำนานสองแผ่นดิน',p:2}};
 const KEY='lannasnap-v1'; const EPOCH=2; // bump to wipe every save (local + cloud) — 2026-11-04 reset
 let user=null, prof=null;
-function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,epoch:EPOCH,created:Date.now(),avatar:null,tut:false,tutReward:false,firstTopup:false}; }
+function freshProfile(){ const owned={}; const start=STARTER_DECKS.lanna.slice(); for(const id of start) owned[id]={tier:0,dup:0}; return {name:'ผู้มาเยือน',bia:60,cl:1,owned,deck:start,wins:0,losses:0,cubes:0,v:1,epoch:EPOCH,created:Date.now(),avatar:null,rank:0,tut:false,tutReward:false,firstTopup:false}; }
 function loadLocal(){ try{ const s=JSON.parse(localStorage.getItem(KEY)||'null'); if(s&&s.v===1&&s.epoch===EPOCH) return s; if(s){ localStorage.removeItem(KEY); localStorage.removeItem('lannasnap-topup-hide'); } }catch(e){} return null; }
 async function saveProfile(){ try{ localStorage.setItem(KEY,JSON.stringify(prof)); }catch(e){} if(sb&&user){ try{ await sb.from('profiles').upsert({id:user.id,data:prof,updated_at:new Date().toISOString()}); }catch(e){} } }
 async function loadCloud(){ if(!sb||!user) return null; try{ const {data,error}=await sb.from('profiles').select('data').eq('id',user.id).maybeSingle(); if(!error&&data&&data.data&&data.data.epoch===EPOCH) return data.data; }catch(e){} return null; }
@@ -52,7 +52,7 @@ async function maybeUnlock(){ if(prof.cl%3!==0) return; const pool=PLAYABLE.filt
 
 /* ---------- home / deck / collection ---------- */
 function renderTop(){ if(!prof) return; $('#pAv').innerHTML=avatarHTML(); $('#pName').textContent=prof.name; $('#pCL').textContent=`ระดับคอลเลกชัน ${prof.cl} · ชนะ ${prof.wins} แพ้ ${prof.losses}`; $('#pBia').textContent=prof.bia; $$('.biaMirror').forEach(e=>e.textContent=prof.bia); }
-function renderHome(){ renderTop(); $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier,up:canUp(id)})).join(''); }
+function renderHome(){ renderTop(); const rk=rankOf(prof.rank||0); $('#homeRank').innerHTML=`<span class="rkDot" style="--rc:${rk.c}"></span><b>${rk.n}</b><small>${prof.rank||0} แต้ม${rk.next?` · อีก ${rk.next.p-(prof.rank||0)} ถึง ${rk.next.n}`:''}</small>`; $('#homeDeckPreview').innerHTML=prof.deck.map(id=>cardHTML(CARDS[id],{small:true,tier:prof.owned[id]?.tier,up:canUp(id)})).join(''); }
 let fDeck='all', fColl='all';
 function filterBar(el,cur,set){ el.innerHTML=[['all','ทั้งหมด']].concat(Object.keys(PROV).map(k=>[k,L(PROV[k].ab)])).map(([k,n])=>`<button type="button" data-f="${k}" class="${k===cur?'on':''}">${n}</button>`).join(''); el.onclick=e=>{ const b=e.target.closest('[data-f]'); if(b) set(b.dataset.f); }; }
 function sortDefs(a,b){ return a.cost-b.cost||L(a.name).localeCompare(L(b.name),'th'); }
@@ -71,7 +71,7 @@ function renderColl(){ const n=PLAYABLE.filter(c=>prof.owned[c.id]).length; $('#
 $('#collGrid').onclick=e=>{ const c=e.target.closest('.card'); if(c) cardView(c.dataset.id); };
 
 /* ---------- match ---------- */
-let S=null, sel=null, busy=false, aiLevel=1;
+let S=null, sel=null, busy=false, aiLevel=1; let ME=0, OP=1; // our seat in the shared game (online guests sit at 1)
 function aiDeck(){ const by=(cost)=>PLAYABLE.filter(c=>c.cost===cost); const want=[1,1,2,2,2,3,3,4,4,5,5,6]; const out=[]; const provs=Object.keys(PROV).filter(p=>p!=='ln').sort(()=>Math.random()-.5).slice(0,2);
   for(const w of want){ let cands=by(w).filter(c=>!out.includes(c.id)); const fav=cands.filter(c=>c.prov.some(p=>provs.includes(p))); cands=fav.length&&Math.random()<.7?fav:cands; if(!cands.length) cands=PLAYABLE.filter(c=>!out.includes(c.id)); out.push(cands[Math.floor(Math.random()*cands.length)].id); } return out; }
 const AI_NAMES=['พ่อหนานคำ','แม่อุ๊ยแสง','ครูแก้ว','หนานจ๋อย','อ้ายเปา','น้องฝ้าย'];
@@ -85,9 +85,9 @@ const TUT_AI=['langsat','saltmaker','coffeefarmer','fisher','silkweaver','kuptai
 function tutIntro(){ modal(`<div class="result tutIntro"><div class="logo sm"><span class="l1">ล้านนา</span><span class="l2">SNAP</span></div><h2 style="font-size:24px">ยินดีต้อนรับ!</h2><p>มาลองเล่นตาแรกด้วยกัน<br>เล่นจบรับ <b class="gain">การ์ดใหม่ 10 ใบ</b></p><div class="actions"><button class="btn end" id="tutGo" type="button">เริ่มสอนเล่น</button></div></div>`,b=>{ b.querySelector('#tutGo').onclick=()=>{ closeModal(); startTutorial(); }; }); }
 function matchMusic(){ FX.fireflies(true); try{ if(AUD.pref.music){ const t=AUD.shuffle(); if(t) showTrack(t); } }catch(e){} }
 function showTrack(t){ const n=$('#trackName'); if(!n) return; n.textContent='♪ '+t.th; n.classList.remove('show'); void n.offsetWidth; n.classList.add('show'); }
-function startTutorial(){ S=newGame({seed:20261104,decks:[TUT_DECK.slice(),TUT_AI.slice()],noShuffle:[true,true],locs:['clocktower','kwanphayao','tonsakyai'],names:[prof.name,'ครูแก้ว (สอนเล่น)']}); S.stake=0; S.tut=true;
-  $('#oppName').textContent=S.players[1].name; show('scrMatch'); matchMusic(); nextTurn(); }
-function coachMsg(){ const me=S.players[0]; const q=me.played.length; const hasTemple=me.hand.some(c=>c.def.type==='temple');
+function startTutorial(){ ME=0; OP=1; NET=null; S=newGame({seed:20261104,decks:[TUT_DECK.slice(),TUT_AI.slice()],noShuffle:[true,true],locs:['clocktower','kwanphayao','tonsakyai'],names:[prof.name,'ครูแก้ว (สอนเล่น)']}); S.stake=0; S.tut=true;
+  $('#oppName').textContent=S.players[OP].name; show('scrMatch'); matchMusic(); nextTurn(); }
+function coachMsg(){ const me=S.players[ME]; const q=me.played.length; const hasTemple=me.hand.some(c=>c.def.type==='temple');
   if(S.turn===1){ if(q) return ['กด <b>จบเทิร์น</b> การ์ดของทั้งสองฝ่ายจะเปิดพร้อมกัน','#btnEnd']; if(sel) return ['แตะ<b>สนาม</b>ที่อยากวาง (ช่องที่มีกรอบเหลือง)','.loc.target .side.me'];
     return ['ชนะ <b>2 ใน 3 สนาม</b> คือชนะเกม · แตะการ์ดในมือ 1 ใบ<br><small>วงฟ้า = พลังงานที่ใช้ · หกเหลี่ยมส้ม = พลัง</small>','#hand']; }
   if(S.turn===2) return [q?'ดีมาก! กดจบเทิร์นได้เลย':'พลังงานเพิ่มเทิร์นละ 1 · สนามไหนพลังรวมมากกว่า ฝ่ายนั้นชนะสนาม<br><small>ตัวเลขมุมขวาของสนาม: บน = คู่แข่ง, ล่าง = เรา</small>',q?'#btnEnd':'#board'];
@@ -102,80 +102,189 @@ async function tutReward(){ const pool=PLAYABLE.filter(c=>!prof.owned[c.id]&&rar
     sfx('pack'); b.querySelectorAll('.d10').forEach((d,i)=>setTimeout(()=>{ d.classList.add('open'); sfx('reveal'); const c=d.querySelector('.card'); FX.burst(c,PROV[CARDS[c.dataset.id].prov[0]].col,14); },300+i*180));
     b.querySelector('#d10ok').onclick=()=>{ closeModal(); show('scrDeck'); toast('ใส่การ์ดใหม่ลงเด็คได้เลย หรือกด "จัดให้"',2200); }; }); }
 function applyTierPower(S,p){ const P=S.players[p]; for(const c of [...P.deck,...P.hand]){ const o=prof.owned[c.def.id]; if(o&&o.tier>=6){ c.perm+=MAX_BONUS; c.laikham=true; } } }
-function startMatch(stake=0){ if(prof.deck.length<12){ toast('จัดเด็คให้ครบ 12 ใบก่อนนะ'); show('scrDeck'); return; }
+function startMatch(stake=0){ ME=0; OP=1; NET=null; if(prof.deck.length<12){ toast('จัดเด็คให้ครบ 12 ใบก่อนนะ'); show('scrDeck'); return; }
   S=newGame({seed:(Math.random()*2**31)|0,decks:[prof.deck.slice(),aiDeck()],names:[prof.name,AI_NAMES[Math.floor(Math.random()*AI_NAMES.length)]+' (AI)']}); S.stake=stake; applyTierPower(S,0);
-  $('#oppName').textContent=S.players[1].name; show('scrMatch'); matchMusic(); nextTurn(); }
+  $('#oppName').textContent=S.players[OP].name; show('scrMatch'); matchMusic(); nextTurn(); }
 $('#btnPlay').onclick=stakePick;
-$('#btnReset').onclick=()=>{ const legends=Object.keys(prof.owned).filter(id=>CARDS[id]&&rarityOf(CARDS[id])!=='common').length;
+const _resetUnused=()=>{ const legends=Object.keys(prof.owned).filter(id=>CARDS[id]&&rarityOf(CARDS[id])!=='common').length;
   modal(`<div class="result"><h2 style="font-size:24px">เริ่มเกมใหม่?</h2><p>ล้างเซฟทั้งหมด: การ์ด ${Object.keys(prof.owned).length} ใบ (ตำนาน ${legends} ใบ) เบี้ย ${prof.bia} และระดับอัปเกรด<br>แล้วเริ่มใหม่ด้วยเด็คเริ่มต้น (ตำนาน 1 ใบ) + โหมดสอนเล่น + รางวัล 10 ใบ</p><p class="loss">ย้อนกลับไม่ได้</p><div class="actions"><button class="btn ghost" id="rsNo" type="button">ยกเลิก</button><button class="btn end" id="rsYes" type="button">ล้างแล้วเริ่มใหม่</button></div></div>`,b=>{
     b.querySelector('#rsNo').onclick=closeModal;
-    b.querySelector('#rsYes').onclick=async()=>{ const name=prof.name; prof=freshProfile(); if(user) prof.name=name; await saveProfile(); closeModal(); enter(); }; }); }; $('#btnTut').onclick=startTutorial;
-function nextTurn(){ applySnapsAtTurnStart(S); startTurn(S); if(!S.tut&&aiShouldSnap(S,1)&&!S.players[1].snapped){ snap(S,1); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); sfx('oppsnap'); },900); }
+    b.querySelector('#rsYes').onclick=async()=>{ const name=prof.name; prof=freshProfile(); if(user) prof.name=name; await saveProfile(); closeModal(); enter(); }; }); }; 
+function nextTurn(){ applySnapsAtTurnStart(S); startTurn(S); if(NET) netTurnStart(); if(!S.tut&&!NET&&aiShouldSnap(S,OP)&&!S.players[OP].snapped){ snap(S,OP); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); sfx('oppsnap'); },900); }
   FX.banner(S.turn===S.maxTurn?'เทิร์นสุดท้าย!':`เทิร์น ${S.turn}`,S.turn===S.maxTurn?'final':''); sfx('turn');
   if(S.turn<=3) setTimeout(()=>flashLoc(S.turn-1),200);
   sel=null; renderMatch(); }
 function flashLoc(li){ const el=$(`.loc[data-li="${li}"] .tile`); if(el){ el.classList.add('reveal'); setTimeout(()=>el.classList.remove('reveal'),1300); setTimeout(()=>FX.burst(el,PROV[S.locs[li].def.prov].col,22),350); setTimeout(()=>{ sfx('locreveal'); FX.banner(L(S.locs[li].def.name),'loc'); },700); } }
 function pulseCubes(){ const c=$('#cubes'); c.classList.remove('pulse'); void c.offsetWidth; c.classList.add('pulse'); }
 function powerOf(c){ return cardPower(S,c); }
-function renderMatch(hideUids){ const me=S.players[0];
+function renderMatch(hideUids){ const me=S.players[ME];
   $('#cubes').textContent=S.cubes*(S.pendingSnap?2:1); $('#stakeLbl').textContent=S.stake?`× ${S.stake} เบี้ย`:'ซ้อมมือ'; $('#energy').textContent=me.energy; $('#turnLbl').textContent=`${S.turn}/${S.maxTurn}`;
   $('#btnSnap').disabled=me.snapped||S.over; $('#btnSnap').textContent=me.snapped?'สแนปแล้ว':'สแนป';
-  const tc=S.temple; $('#templeSlot').classList.toggle('has',!!tc); $('#templeSlot').style.setProperty('--tc',tc?PROV[tc.def.temple].col:'transparent'); $('#templeSlot .tsCard').innerHTML=tc?`${cardHTML(tc.def,{tier:0})}<span class="tsBuff"><b>${esc(L(PROV[tc.def.temple].ab))}</b> +2<small>${tc.owner===0?'วัดของเรา':'วัดคู่แข่ง'}</small></span>`:'<div class="tsEmpty"><span>卍</span><small>ว่าง<br>ลงการ์ดวัด<br>บัฟทั้งจังหวัด</small></div>';
+  const tc=S.temple; $('#templeSlot').classList.toggle('has',!!tc); $('#templeSlot').style.setProperty('--tc',tc?PROV[tc.def.temple].col:'transparent'); $('#templeSlot .tsCard').innerHTML=tc?`${cardHTML(tc.def,{tier:0})}<span class="tsBuff"><b>${esc(L(PROV[tc.def.temple].ab))}</b> +2<small>${tc.owner===ME?'วัดของเรา':'วัดคู่แข่ง'}</small></span>`:'<div class="tsEmpty"><span>卍</span><small>ว่าง<br>ลงการ์ดวัด<br>บัฟทั้งจังหวัด</small></div>';
   const queuedTemple=me.played.find(p=>p.li==='temple'); if(queuedTemple) $('#templeSlot .tsCard').innerHTML=cardHTML(queuedTemple.c.def,{cls:'queued',uid:queuedTemple.c.uid})+'<span class="tsBuff"><small>รอเปิด</small></span>';
-  $('#board').innerHTML=S.locs.map((Lc,li)=>{ const d=Lc.def; const pc=PROV[d.prov].col; const mine=Lc.cards[0].filter(c=>!hideUids||!hideUids.has(c.uid)), opp=Lc.cards[1].filter(c=>!hideUids||!hideUids.has(c.uid));
-    const qd=me.played.filter(p=>p.li===li).map(p=>p.c); const a=locPower(S,li,0), b=locPower(S,li,1); const cap=capOf(S,li);
+  $('#board').innerHTML=S.locs.map((Lc,li)=>{ const d=Lc.def; const pc=PROV[d.prov].col; const mine=Lc.cards[ME].filter(c=>!hideUids||!hideUids.has(c.uid)), opp=Lc.cards[OP].filter(c=>!hideUids||!hideUids.has(c.uid));
+    const qd=me.played.filter(p=>p.li===li).map(p=>p.c); const a=locPower(S,li,ME), b=locPower(S,li,OP); const cap=capOf(S,li);
     const cd=c=>cardHTML(c.def,{small:true,uid:c.uid,power:powerOf(c),status:Object.fromEntries(Object.keys(c.status).filter(s=>statusActive(S,c,s)).map(s=>[s,1])),tier:0,cls:statusActive(S,c,'sleep')?'slept':''});
     const lw=Lc.revealed?(a>b?' wMe':b>a?' wOpp':''):''; return `<div class="loc${lw}" data-li="${li}"><div class="side opp${cap>4?' cap5':''}">${opp.map(cd).join('')}</div>
       <div class="tile${Lc.revealed?'':' hiddenLoc'}" style="--pc:${pc};${Lc.revealed?`background-image:url(art/loc_${d.id}.webp)`:''}">${Lc.revealed?`<span class="ab">${esc(L(PROV[d.prov].ab))}</span><b>${esc(L(d.name))}</b><small>${esc(L(d.text))}</small>`:`<b>?</b><small>เปิดเทิร์น ${li+1}</small>`}
         <div class="score"><span class="${b>a?'w':''}">${b}</span><span class="${a>b?'w':''}">${a}</span></div></div>
       <div class="side me${cap>4?' cap5':''}">${mine.map(cd).join('')}${qd.map(c=>cardHTML(c.def,{small:true,uid:c.uid,cls:'queued',tier:0})).join('')}</div></div>`; }).join('');
   $('#hand').style.setProperty('--n',Math.max(me.hand.length,1)); $('#hand').innerHTML=me.hand.map(c=>cardHTML(c.def,{uid:c.uid,cost:cardCost(S,c),power:c.def.power+c.perm,tier:0,cls:(c.laikham?'lkc ':'')+(sel===c?'sel':'')+(cardCost(S,c)>me.energy?' dim':'')})).join('');
-  $$('.loc').forEach(el=>el.classList.toggle('target',!!sel&&sel.def.type!=='temple'&&canPlay(S,0,sel,+el.dataset.li)));
-  $('#templeSlot').classList.toggle('target',!!sel&&sel.def.type==='temple'&&canPlay(S,0,sel,'temple')); renderCoach(); }
-$('#hand').addEventListener('click',e=>{ if(busy) return; const el=e.target.closest('.card'); if(!el) return; const c=S.players[0].hand.find(x=>x.uid==el.dataset.uid); if(!c) return; if(sel===c){ sel=null; renderMatch(); sfx('tap'); return; } sel=c; renderMatch(); if(cardCost(S,c)>S.players[0].energy){ toast('พลังงานไม่พอ'); sfx('error'); } else sfx('select'); });
+  $$('.loc').forEach(el=>el.classList.toggle('target',!!sel&&sel.def.type!=='temple'&&canPlay(S,ME,sel,+el.dataset.li)));
+  $('#templeSlot').classList.toggle('target',!!sel&&sel.def.type==='temple'&&canPlay(S,ME,sel,'temple')); renderCoach(); }
+$('#hand').addEventListener('click',e=>{ if(busy) return; const el=e.target.closest('.card'); if(!el) return; const c=S.players[ME].hand.find(x=>x.uid==el.dataset.uid); if(!c) return; if(sel===c){ sel=null; renderMatch(); sfx('tap'); return; } sel=c; renderMatch(); if(cardCost(S,c)>S.players[ME].energy){ toast('พลังงานไม่พอ'); sfx('error'); } else sfx('select'); });
 $('#hand').addEventListener('contextmenu',e=>{ const el=e.target.closest('.card'); if(el){ e.preventDefault(); cardView(el.dataset.id); } });
 let pressT=null; document.addEventListener('pointerdown',e=>{ const el=e.target.closest('#scrMatch .card,#deckPool .card,#deckSlots .card'); if(!el) return; pressT=setTimeout(()=>{ pressT=null; cardView(el.dataset.id); },520); }); document.addEventListener('pointerup',()=>{ if(pressT){ clearTimeout(pressT); pressT=null; } });
-$('#board').addEventListener('click',e=>{ if(busy) return; const q=e.target.closest('.card.queued'); if(q){ const me=S.players[0]; const i=me.played.findIndex(p=>p.c.uid==q.dataset.uid); if(i>=0){ unqueue(S,0,i); renderMatch(); sfx('unplace'); } return; }
+$('#board').addEventListener('click',e=>{ if(busy) return; const q=e.target.closest('.card.queued'); if(q){ const me=S.players[ME]; const i=me.played.findIndex(p=>p.c.uid==q.dataset.uid); if(i>=0){ unqueue(S,ME,i); renderMatch(); sfx('unplace'); } return; }
   const card=e.target.closest('.card'); const loc=e.target.closest('.loc'); if(!loc) return; const li=+loc.dataset.li;
-  if(sel&&sel.def.type!=='temple'){ if(queuePlay(S,0,sel,li)){ sel=null; renderMatch(); sfx('place'); const qe=$$(`.loc[data-li="${li}"] .card.queued`).pop(); if(qe) FX.burst(qe,'#fff0b8',8); } else { sfx('error'); toast(S.locs[li].revealed&&S.locs[li].def.closeAfter&&S.turn>S.locs[li].def.closeAfter?'ประตูน้ำปิดแล้ว ลงที่นี่ไม่ได้':'ลงที่นี่ไม่ได้'); } return; }
+  if(sel&&sel.def.type!=='temple'){ if(queuePlay(S,ME,sel,li)){ sel=null; renderMatch(); sfx('place'); const qe=$$(`.loc[data-li="${li}"] .card.queued`).pop(); if(qe) FX.burst(qe,'#fff0b8',8); } else { sfx('error'); toast(S.locs[li].revealed&&S.locs[li].def.closeAfter&&S.turn>S.locs[li].def.closeAfter?'ประตูน้ำปิดแล้ว ลงที่นี่ไม่ได้':'ลงที่นี่ไม่ได้'); } return; }
   if(card&&!card.classList.contains('queued')){ cardView(card.dataset.id); return; }
   const Lc=S.locs[li]; if(Lc.revealed) modal(`<div class="cardView"><h3>${esc(L(Lc.def.name))}</h3><div class="ab">${esc(L(Lc.def.text))}<br><small>สนามบ้าน: การ์ด ${esc(L(PROV[Lc.def.prov].ab))} ที่นี่ +1</small></div><div class="lore"><b>เรื่องจริง</b><br>${esc(L(Lc.def.lore))}<br><br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(Lc.def.maps)}" target="_blank" rel="noopener" style="color:var(--gold)">📍 เปิดใน Google Maps</a></div></div>`); });
-$('#templeSlot').addEventListener('click',e=>{ if(busy) return; const q=e.target.closest('.card.queued'); const me=S.players[0]; if(q){ const i=me.played.findIndex(p=>p.c.uid==q.dataset.uid); if(i>=0){ unqueue(S,0,i); renderMatch(); } return; }
-  if(sel&&sel.def.type==='temple'){ if(me.played.some(p=>p.li==='temple')){ toast('ลงวัดได้เทิร์นละ 1 ใบ'); return; } if(queuePlay(S,0,sel,'temple')){ sel=null; renderMatch(); sfx('place'); } else { toast('พลังงานไม่พอ'); sfx('error'); } }
+$('#templeSlot').addEventListener('click',e=>{ if(busy) return; const q=e.target.closest('.card.queued'); const me=S.players[ME]; if(q){ const i=me.played.findIndex(p=>p.c.uid==q.dataset.uid); if(i>=0){ unqueue(S,ME,i); renderMatch(); } return; }
+  if(sel&&sel.def.type==='temple'){ if(me.played.some(p=>p.li==='temple')){ toast('ลงวัดได้เทิร์นละ 1 ใบ'); return; } if(queuePlay(S,ME,sel,'temple')){ sel=null; renderMatch(); sfx('place'); } else { toast('พลังงานไม่พอ'); sfx('error'); } }
   else if(S.temple) cardView(S.temple.def.id); });
-$('#btnSnap').onclick=()=>{ if(snap(S,0)){ toast('สแนป! เดิมพันเพิ่มเป็นสองเท่าตอนเริ่มเทิร์นหน้า'); renderMatch(); FX.shock('#a98bff'); pulseCubes(); sfx('snap'); } };
-$('#btnRetreat').onclick=()=>{ if(busy) return; modal(`<div class="result"><h2>ถอย?</h2><p>เสียเดิมพัน ${S.cubes} แต้ม${S.stake?` = ${Math.min(prof.bia,S.cubes*S.stake)} เบี้ย`:''} (ถ้าสู้ต่อแล้วแพ้จะเสียมากกว่านี้)</p><div class="actions"><button class="btn ghost" id="noR" type="button">สู้ต่อ</button><button class="btn end" id="yesR" type="button">ถอย</button></div></div>`,b=>{ b.querySelector('#noR').onclick=closeModal; b.querySelector('#yesR').onclick=()=>{ closeModal(); retreat(S,0); endMatch(); }; }); };
+$('#btnSnap').onclick=()=>{ if(snap(S,ME)){ toast('สแนป! เดิมพันเพิ่มเป็นสองเท่าตอนเริ่มเทิร์นหน้า'); renderMatch(); FX.shock('#a98bff'); pulseCubes(); sfx('snap'); } };
+$('#btnRetreat').onclick=()=>{ if(busy) return; modal(`<div class="result"><h2>ถอย?</h2><p>เสียเดิมพัน ${S.cubes} แต้ม${S.stake?` = ${Math.min(prof.bia,S.cubes*S.stake)} เบี้ย`:''} (ถ้าสู้ต่อแล้วแพ้จะเสียมากกว่านี้)</p><div class="actions"><button class="btn ghost" id="noR" type="button">สู้ต่อ</button><button class="btn end" id="yesR" type="button">ถอย</button></div></div>`,b=>{ b.querySelector('#noR').onclick=closeModal; b.querySelector('#yesR').onclick=()=>{ closeModal(); if(NET) netSend('retreat',{}); retreat(S,ME); endMatch(); }; }); };
 $('#btnEnd').onclick=async()=>{ if(busy||S.over) return; busy=true; sel=null;
-  for(const {c,li} of aiPlan(S,1,S.tut?0:aiLevel)) queuePlay(S,1,c,li);
-  const queued=new Set([...S.players[0].played,...S.players[1].played].map(p=>p.c.uid));
+  if(NET){ return netEndTurn(); }
+  for(const {c,li} of aiPlan(S,OP,S.tut?0:aiLevel)) queuePlay(S,OP,c,li);
+  return resolveTurn(); };
+async function resolveTurn(){
+  const queued=new Set([...S.players[ME].played,...S.players[OP].played].map(p=>p.c.uid));
   const ev=revealTurn(S);
   const hide=new Set(queued); renderMatch(hide);
   for(const e of ev){ if(e.k==='reveal'||e.k==='temple'){ const cc0=allBoard(S).concat(S.temple?[S.temple]:[]).find(x=>x.uid==e.uid); const bigOne=cc0&&(cc0.def.type==='legend'||cc0.def.prov.length>1||cc0.def.cost>=5);
-    if(bigOne){ sfx(cc0.def.type==='legend'||cc0.def.prov.length>1?'legend':'big'); await FX.splash(cardHTML(cc0.def,{tier:0}),PROV[cc0.def.prov[0]].col,cc0.def.prov.length>1?'dual':cc0.owner===1?'opp':''); } else if(e.k==='temple'){ sfx('temple'); FX.glow(); } else sfx('reveal');
+    if(bigOne){ sfx(cc0.def.type==='legend'||cc0.def.prov.length>1?'legend':'big'); await FX.splash(cardHTML(cc0.def,{tier:0}),PROV[cc0.def.prov[0]].col,cc0.def.prov.length>1?'dual':cc0.owner===OP?'opp':''); } else if(e.k==='temple'){ sfx('temple'); FX.glow(); } else sfx('reveal');
     hide.delete(e.uid); renderMatch(hide); const el=$(`[data-uid="${e.uid}"]`); if(el){ el.classList.add('pop'); const cc=allBoard(S).concat(S.temple?[S.temple]:[]).find(x=>x.uid==e.uid); setTimeout(()=>FX.burst(el,cc?PROV[cc.def.prov[0]].col:'#ffd98a',cc&&cc.def.cost>=5?30:16),180); if(cc&&cc.def.cost>=5) setTimeout(()=>FX.shake($('#board')),200); } if(e.k==='temple') setTimeout(()=>FX.rays($('#templeSlot')),150); if(e.k==='temple') toast(e.prev?`${L(S.temple.def.name)} เข้ามาแทนที่ บารมีวัดเดิมเลือนไป`:`${L(S.temple.def.name)} · การ์ด ${L(PROV[S.temple.def.temple].ab)} ทุกใบ +2`,1600); floats(e.log||[]); await wait(520); } else if(e.k==='endturn'){ renderMatch(); floats(e.log); await wait(300); } }
-  if(!S.tut&&aiShouldRetreat(S,1)){ retreat(S,1); }
-  busy=false; if(S.over) endMatch(); else nextTurn(); };
+  if(!S.tut&&!NET&&aiShouldRetreat(S,OP)){ retreat(S,OP); }
+  busy=false; if(S.over) endMatch(); else nextTurn(); }
 let sndT={}; function snd(n){ const now=Date.now(); if(sndT[n]&&now-sndT[n]<120) return; sndT[n]=now; sfx(n); }
 function floats(log){ for(const l of log){ const el=$(`[data-uid="${l.uid}"]`); if(!el) continue; const r=el.getBoundingClientRect(), a=$('#app').getBoundingClientRect(); const f=document.createElement('div'); f.className='fly'; f.style.left=(r.left-a.left+r.width/2-10)+'px'; f.style.top=(r.top-a.top)+'px';
     if(l.k==='buff'){ f.textContent=(l.n>0?'+':'')+l.n; f.style.color=l.n>0?'#9dffbf':'#ff9f9f'; if(Math.abs(l.n)>=3) f.classList.add('bigfly'); if(l.n>0){ FX.shimmer(el,'#9dffbf',6); snd('buff'); } else { FX.shake(el); snd('debuff'); } } else if(l.k==='status'){ f.textContent=L(STATUS[l.s]); f.style.color='#ffd06a'; f.style.fontSize='13px'; FX.burst(el,'#ffd06a',8); FX.shake(el); snd('status'); } else if(l.k==='block'){ f.textContent='กัน!'; f.style.color='#9fe3ff'; snd('block'); FX.burst(el,'#9fe3ff',10); } else if(l.k==='move'){ f.textContent='ย้าย'; } else if(l.k==='vanish'){ f.textContent='✦'; } else continue;
     $('#app').appendChild(f); setTimeout(()=>f.remove(),950); } }
-async function crowns(){ if(S.retreated!=null) return; for(let i=0;i<3;i++){ const w=locWinner(S,i); const el=$(`.loc[data-li="${i}"] .tile`); if(w===0||w===1){ FX.crown(el,w===0); sfx(w===0?'coin':'tap'); } await wait(380); } await wait(250); }
-async function endMatch(){ renderMatch(); FX.fireflies(false); await crowns(); if(S.tut){ return endTutorial(); } const w=S.winner, ret=S.retreated; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
-  const win=w===0, draw=w===-1, stake=S.stake||0; let gained=0; const before=prof.bia;
+async function crowns(){ if(S.retreated!=null) return; for(let i=0;i<3;i++){ const w=locWinner(S,i); const el=$(`.loc[data-li="${i}"] .tile`); if(w===0||w===1){ FX.crown(el,w===ME); sfx(w===ME?'coin':'tap'); } await wait(380); } await wait(250); }
+async function endMatch(){ renderMatch(); FX.fireflies(false); netStopClock(); await crowns(); if(S.tut){ return endTutorial(); } if(S.net){ return endOnline(); } const w=S.winner, ret=S.retreated; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
+  const win=w===ME, draw=w===-1, stake=S.stake||0; let gained=0; const before=prof.bia;
   let delta=0; if(stake){ if(win) delta=stake*cubes; else if(!draw) delta=-Math.min(prof.bia,stake*cubes); delta+=5; } else delta=win?10:5;
   if(win){ prof.wins++; prof.cubes+=cubes; } else if(!draw){ prof.losses++; prof.cubes=Math.max(0,prof.cubes-cubes); }
-  const playedIds=new Set(); for(const c of [...allBoard(S),...S.destroyed]) if(c.owner===0) playedIds.add(c.def.id); if(S.temple&&S.temple.owner===0) playedIds.add(S.temple.def.id);
+  const playedIds=new Set(); for(const c of [...allBoard(S),...S.destroyed]) if(c.owner===ME) playedIds.add(c.def.id); if(S.temple&&S.temple.owner===ME) playedIds.add(S.temple.def.id);
   const cand=[...playedIds].filter(id=>prof.owned[id]&&prof.owned[id].tier<6); let spareGot=null; if(cand.length&&(win||Math.random()<(draw?.5:.25))){ spareGot=cand[Math.floor(Math.random()*cand.length)]; prof.owned[spareGot].dup=(prof.owned[spareGot].dup||0)+1; gained=1; }
   prof.bia=Math.max(0,prof.bia+delta); await saveProfile();
   const res=[0,1,2].map(i=>locWinner(S,i));
   const money=stake?(win?`ได้เดิมพัน <b class="gain">+${stake*cubes}</b> เบี้ย`:draw?'เสมอ ได้เดิมพันคืน':`เสียเดิมพัน <b class="loss">${stake*cubes>before?'-'+before:'-'+stake*cubes}</b> เบี้ย`)+' · ค่าลงสนาม +5':`ซ้อมมือ · ได้ <b class="gain">+${delta}</b> เบี้ย`;
   if(win){ FX.confetti(); FX.lanterns(14); FX.fireworks(7); sfx('win'); } else if(!draw){ FX.shake($('#board')); sfx('lose'); }
-  modal(`<div class="result"><h2 class="${win?'win':draw?'':'lose'}">${win?'ชนะ!':draw?'เสมอ':'แพ้'}</h2><p>${ret===0?'คุณถอย':ret===1?'คู่แข่งถอย!':`สนามที่ชนะ ${res.filter(x=>x===0).length}/3`} · ${cubes} แต้มคิวบ์${stake?` × ${stake}`:''}</p>
+  modal(`<div class="result"><h2 class="${win?'win':draw?'':'lose'}">${win?'ชนะ!':draw?'เสมอ':'แพ้'}</h2><p>${ret===ME?'คุณถอย':ret===OP?'คู่แข่งถอย!':`สนามที่ชนะ ${res.filter(x=>x===ME).length}/3`} · ${cubes} แต้มคิวบ์${stake?` × ${stake}`:''}</p>
     <p>${money}</p><div class="biaBig"><span class="shell">◖</span><b id="resBia">${before}</b></div>${spareGot?`<div class="spareGot">${cardHTML(CARDS[spareGot],{small:true})}<span>ได้อะไหล่ <b>${esc(L(CARDS[spareGot].name))}</b> +1${canUp(spareGot)?' · <b class="loss">พร้อมอัป!</b>':''}</span></div>`:'<p class="muted">ตานี้ไม่ได้อะไหล่ · ชนะได้อะไหล่แน่นอน 1 ใบ</p>'}
     <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">เล่นอีกตา</button></div></div>`,b=>{ FX.count(b.querySelector('#resBia'),before,prof.bia,1100); b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); stakePick(); }; }); }
 
-async function endTutorial(){ const win=S.winner===0; prof.tut=true; await saveProfile(); sfx(win?'win':'lose'); if(win){ FX.fireworks(5); FX.confetti(); FX.lanterns(10); }
+async function endTutorial(){ const win=S.winner===ME; prof.tut=true; await saveProfile(); sfx(win?'win':'lose'); if(win){ FX.fireworks(5); FX.confetti(); FX.lanterns(10); }
   modal(`<div class="result"><h2 class="${win?'win':''}">${win?'ชนะ!':'จบบทสอน'}</h2><p>${win?'เก่งมาก! พร้อมลุยแล้ว':'ไม่เป็นไร รู้วิธีเล่นแล้ว ลองอีกทีได้'}</p><p class="muted">สรุป: วางการ์ด · ชนะ 2 ใน 3 สนาม · วัดบัฟทั้งจังหวัด · สแนปเพิ่มเดิมพัน</p><div class="actions"><button class="btn end" id="tutRw" type="button">${prof.tutReward?'กลับหน้าหลัก':'รับรางวัล 10 ใบ'}</button></div></div>`,b=>{ b.querySelector('#tutRw').onclick=()=>{ if(prof.tutReward){ closeModal(); show('scrHome'); } else tutReward(); }; }); }
+
+/* ---------- online play (Supabase Realtime: presence lobby + lockstep turns) ---------- */
+let NET=null; // {kind:'ranked'|'room', ch, matchId, host, seed, me:{...}, opp:{...}, gotOpp, myTurn, oppTurn, clock, left}
+const NET_V=3; // protocol version; clients only pair with the same version
+const TURN_SECS=75, SEARCH_SECS=30;
+const RANKS=[{n:'เชิงดอย',p:0,c:'#8fbf7a'},{n:'ดอยสุเทพ',p:10,c:'#e8b64a'},{n:'ดอยผ้าห่มปก',p:30,c:'#7fc4ff'},{n:'ดอยหลวงเชียงดาว',p:60,c:'#c792ff'},{n:'ยอดดอยอินทนนท์',p:100,c:'#ffd98a'}];
+function rankOf(pts){ let r=RANKS[0],i=0; RANKS.forEach((x,k)=>{ if(pts>=x.p){ r=x; i=k; } }); const nx=RANKS[i+1]; return {...r,i,next:nx,pts,prog:nx?(pts-r.p)/(nx.p-r.p):1}; }
+const guestNetId='g-'+Math.random().toString(36).slice(2,10);
+function netId(){ return user?user.id:guestNetId; }
+function myLaikham(){ return prof.deck.filter(id=>(prof.owned[id]?.tier||0)>=6); }
+function myAvatarLite(){ const a=prof.avatar; if(a&&a.type==='card') return {type:'card',id:a.id}; if(a&&a.type==='img'&&a.src&&a.src.length<60000) return {type:'img',src:a.src}; if(a&&a.type==='google') return {type:'google',src:a.src}; return null; }
+function avatarOf(av,name){ if(av&&av.type==='card'&&CARDS[av.id]) return `<img src="art/${av.id}.webp" alt="">`; if(av&&av.src&&/^(data:image\/|https:\/\/)/.test(av.src)) return `<img src="${esc(av.src)}" alt="" referrerpolicy="no-referrer">`; return `<b>${esc((name||'?').charAt(0))}</b>`; }
+function cleanName(s){ return String(s||'ผู้เล่น').replace(/[<>]/g,'').slice(0,20); }
+
+let lobby=null, searchT=null, searchTick=null;
+function needOnline(){ if(!sb){ toast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ลองใหม่อีกครั้ง',2200); return false; } if(prof.deck.length<12){ toast('จัดเด็คให้ครบ 12 ใบก่อนนะ'); show('scrDeck'); return false; } return true; }
+function searchUI(title,sub,onCancel){ modal(`<div class="result srch"><div class="srchRing"><span></span></div><h2 style="font-size:24px">${title}</h2><p id="srchSub">${sub}</p><div class="actions"><button class="btn ghost" id="srchX" type="button">ยกเลิก</button></div></div>`,b=>{ b.querySelector('#srchX').onclick=()=>{ onCancel(); closeModal(); }; }); }
+async function leaveLobby(){ clearTimeout(searchT); clearInterval(searchTick); if(lobby){ try{ await lobby.untrack(); await sb.removeChannel(lobby); }catch(e){} lobby=null; } }
+
+/* ranked random matchmaking */
+async function findRanked(){ if(!user){ toast('สุ่มแมตช์แรงค์ต้องล็อกอิน Google ก่อน',2400); return; } if(!needOnline()) return;
+  const myTs=Date.now(); let left=SEARCH_SECS; let paired=false;
+  searchUI('กำลังหาคู่แข่ง…',`ภายใน ${left} วินาที ถ้าไม่เจอจะเล่นกับ AI แทน`,()=>{ leaveLobby(); });
+  lobby=sb.channel('lanna-lobby',{config:{presence:{key:netId()},broadcast:{self:false}}});
+  const tryPair=()=>{ if(paired||!lobby) return; const st=lobby.presenceState(); const list=Object.values(st).map(v=>v[0]).filter(x=>x&&x.v===NET_V&&!x.busy);
+    list.sort((x,y)=>(Math.min(x.lk,3)-Math.min(y.lk,3))||(x.ts-y.ts)||(x.id<y.id?-1:1));
+    const i=list.findIndex(x=>x.id===netId()); if(i<0) return; const mate=list[i%2===0?i+1:i-1]; if(!mate) return;
+    if(i%2===0){ paired=true; const matchId=netId().slice(0,8)+'-'+mate.id.slice(0,8)+'-'+Date.now().toString(36); const seed=(Math.random()*2**31)|0;
+      lobby.send({type:'broadcast',event:'pair',payload:{to:mate.id,from:netId(),matchId,seed}}); startNetMatch('ranked',matchId,seed,true); } };
+  lobby.on('presence',{event:'sync'},tryPair)
+       .on('broadcast',{event:'pair'},({payload})=>{ if(payload.to===netId()&&!paired){ paired=true; startNetMatch('ranked',payload.matchId,payload.seed,false); } })
+       .subscribe(async status=>{ if(status==='SUBSCRIBED') await lobby.track({id:netId(),name:cleanName(prof.name),lk:myLaikham().length,ts:myTs,v:NET_V,busy:false}); });
+  searchTick=setInterval(()=>{ left--; const s=$('#srchSub'); if(s) s.textContent=`ภายใน ${left} วินาที ถ้าไม่เจอจะเล่นกับ AI แทน`; },1000);
+  searchT=setTimeout(async()=>{ if(paired) return; await leaveLobby(); closeModal(); toast('ไม่พบผู้เล่นตอนนี้ · เล่นกับ AI แทน (ไม่นับแรงค์)',2600); setTimeout(()=>startMatch(0),600); },SEARCH_SECS*1000); }
+
+/* private rooms with a code */
+const CODE_CH='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function newCode(){ let s=''; for(let i=0;i<5;i++) s+=CODE_CH[Math.floor(Math.random()*CODE_CH.length)]; return s; }
+function roomMenu(){ if(!needOnline()) return;
+  modal(`<div class="result"><h2 style="font-size:24px">ห้องเล่นกับเพื่อน</h2><p class="muted">ไม่เสียเบี้ย ไม่นับแรงค์ · เล่นได้ทั้งผู้เยี่ยมชมและบัญชี Google</p>
+    <div class="actions" style="flex-direction:column"><button class="btn end" id="rmNew" type="button">สร้างห้อง</button>
+    <div class="rmJoin"><input id="rmCode" maxlength="5" placeholder="รหัสห้อง 5 ตัว" autocomplete="off" autocapitalize="characters"><button class="btn primary" id="rmGo" type="button">เข้าห้อง</button></div></div></div>`,b=>{
+    b.querySelector('#rmNew').onclick=()=>openRoom(newCode(),true);
+    const go=()=>{ const c=b.querySelector('#rmCode').value.toUpperCase().replace(/[^A-Z0-9]/g,''); if(c.length!==5){ toast('รหัสห้องมี 5 ตัว'); return; } openRoom(c,false); };
+    b.querySelector('#rmGo').onclick=go; b.querySelector('#rmCode').onkeydown=e=>{ if(e.key==='Enter') go(); }; }); }
+async function openRoom(code,isHost){ await leaveLobby(); let started=false;
+  const cancel=()=>{ started=true; leaveLobby(); };
+  if(isHost) modal(`<div class="result srch"><div class="srchRing"><span></span></div><h2 style="font-size:22px">รอเพื่อนเข้าห้อง</h2><p>บอกรหัสนี้ให้เพื่อน</p><div class="roomCode" id="rmShow">${code}</div><div class="actions"><button class="btn ghost" id="rmCopy" type="button">คัดลอกรหัส</button><button class="btn ghost" id="srchX" type="button">ปิดห้อง</button></div></div>`,b=>{
+      b.querySelector('#srchX').onclick=()=>{ cancel(); closeModal(); };
+      b.querySelector('#rmCopy').onclick=async()=>{ try{ await navigator.clipboard.writeText(code); toast('คัดลอกแล้ว'); }catch(e){ const r=document.createRange(); r.selectNodeContents(b.querySelector('#rmShow')); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('เลือกรหัสไว้แล้ว กดคัดลอกได้เลย'); } }; });
+  else searchUI('กำลังเข้าห้อง '+code,'กำลังหาเจ้าของห้อง…',cancel);
+  lobby=sb.channel('lanna-room-'+code,{config:{presence:{key:netId()},broadcast:{self:false}}});
+  lobby.on('presence',{event:'sync'},()=>{ if(started||!isHost) return; const others=Object.values(lobby.presenceState()).map(v=>v[0]).filter(x=>x&&x.id!==netId()&&x.v===NET_V); if(!others.length) return;
+      started=true; const mate=others[0]; const matchId='r'+code+'-'+Date.now().toString(36); const seed=(Math.random()*2**31)|0; lobby.send({type:'broadcast',event:'pair',payload:{to:mate.id,from:netId(),matchId,seed}}); startNetMatch('room',matchId,seed,true); })
+       .on('broadcast',{event:'pair'},({payload})=>{ if(payload.to===netId()&&!started){ started=true; startNetMatch('room',payload.matchId,payload.seed,false); } })
+       .subscribe(async status=>{ if(status==='SUBSCRIBED') await lobby.track({id:netId(),name:cleanName(prof.name),v:NET_V,host:isHost}); });
+  if(!isHost) setTimeout(()=>{ if(!started){ cancel(); closeModal(); toast('ไม่พบห้องนี้ หรือเจ้าของห้องปิดไปแล้ว',2400); } },8000); }
+
+/* a networked match */
+async function startNetMatch(kind,matchId,seed,host){ await leaveLobby();
+  const me={id:netId(),name:cleanName(prof.name),av:myAvatarLite(),deck:prof.deck.slice(),lk:myLaikham(),rank:prof.rank||0};
+  NET={kind,matchId,seed,host,me,opp:null,myTurn:null,oppTurn:null,clock:null,left:false,started:false};
+  const ch=sb.channel('lanna-m-'+matchId,{config:{broadcast:{self:false,ack:false},presence:{key:netId()}}}); NET.ch=ch;
+  const sayHello=()=>ch.send({type:'broadcast',event:'hello',payload:me});
+  ch.on('broadcast',{event:'hello'},({payload})=>{ if(!NET||NET.ch!==ch) return; if(!NET.opp){ NET.opp=payload; sayHello(); netBegin(); } })
+    .on('broadcast',{event:'turn'},({payload})=>{ if(!NET||NET.ch!==ch) return; NET.oppTurn=payload; netTryResolve(); })
+    .on('broadcast',{event:'retreat'},()=>{ if(!NET||!S||S.over) return; toast('คู่แข่งถอยแล้ว!',2000); retreat(S,OP); netStopClock(); busy=false; endMatch(); })
+    .on('presence',{event:'leave'},({key})=>{ if(!NET||key===netId()||!S||S.over||!NET.started) return; NET.left=true; setTimeout(()=>{ if(NET&&NET.left&&S&&!S.over){ toast('คู่แข่งหลุดการเชื่อมต่อ · คุณชนะ',2400); retreat(S,OP); netStopClock(); busy=false; endMatch(); } },8000); })
+    .on('presence',{event:'join'},({key})=>{ if(NET&&key!==netId()) NET.left=false; })
+    .subscribe(async status=>{ if(status==='SUBSCRIBED'){ await ch.track({id:netId()}); sayHello(); const iv=setInterval(()=>{ if(!NET||NET.ch!==ch||NET.opp){ clearInterval(iv); return; } sayHello(); },1500); setTimeout(()=>{ if(NET&&NET.ch===ch&&!NET.opp){ clearInterval(iv); netAbort('คู่แข่งไม่ตอบรับ ลองหาใหม่อีกครั้ง'); } },15000); } }); }
+function netAbort(msg){ const n=NET; NET=null; if(n&&n.ch) try{ sb.removeChannel(n.ch); }catch(e){} netStopClock(); busy=false; closeModal(); show('scrHome'); if(msg) toast(msg,2600); }
+function netBegin(){ if(NET.started) return; NET.started=true; closeModal(); const hostP=NET.host?NET.me:NET.opp, guestP=NET.host?NET.opp:NET.me;
+  ME=NET.host?0:1; OP=1-ME;
+  S=newGame({seed:NET.seed,decks:[hostP.deck.slice(0,12),guestP.deck.slice(0,12)],names:[hostP.name,guestP.name]}); S.stake=0; S.net=NET.kind;
+  for(const [p,P] of [[0,hostP],[1,guestP]]){ const lk=new Set(P.lk||[]); for(const c of [...S.players[p].deck,...S.players[p].hand]) if(lk.has(c.def.id)){ c.perm+=MAX_BONUS; c.laikham=true; } }
+  $('#oppName').innerHTML=`<span class="oppAv">${avatarOf(NET.opp.av,NET.opp.name)}</span>${esc(NET.opp.name)}${NET.kind==='ranked'?` <small class="oppRank" style="color:${rankOf(NET.opp.rank||0).c}">${rankOf(NET.opp.rank||0).n}</small>`:' <small class="oppRank">ห้องเพื่อน</small>'}`;
+  show('scrMatch'); matchMusic(); sfx('legend'); FX.banner(NET.kind==='ranked'?'แมตช์แรงค์!':'ห้องเพื่อน','loc'); setTimeout(nextTurn,900); }
+function netSend(ev,payload){ if(NET&&NET.ch) NET.ch.send({type:'broadcast',event:ev,payload}); }
+function netTurnStart(){ NET.myTurn=null; NET.oppTurn=NET.oppTurn&&NET.oppTurn.turn===S.turn?NET.oppTurn:null; NET.handOrder=S.players[ME].hand.map(c=>c.uid); netStartClock(); }
+function netStartClock(){ netStopClock(); let left=TURN_SECS; const lbl=$('#turnLbl'); NET.clock=setInterval(()=>{ left--; const b=$('#btnEnd'); if(b&&!NET.myTurn) b.dataset.clock=left<=15?left:''; if(left<=0){ netStopClock(); if(!NET.myTurn&&!busy){ toast('หมดเวลา · จบเทิร์นอัตโนมัติ'); $('#btnEnd').click(); } } },1000); }
+function netStopClock(){ if(NET&&NET.clock){ clearInterval(NET.clock); NET.clock=null; } const b=$('#btnEnd'); if(b) b.dataset.clock=''; }
+function netEndTurn(){ // make my queued plays canonical (hand back to turn-start order, then re-queue in the same order) and send them
+  const P=S.players[ME]; const plays=P.played.map(p=>[p.c.uid,p.li]);
+  for(let i=P.played.length-1;i>=0;i--) unqueue(S,ME,i);
+  const byUid=new Map(P.hand.map(c=>[c.uid,c])); P.hand=NET.handOrder.map(u=>byUid.get(u)).filter(Boolean).concat(P.hand.filter(c=>!NET.handOrder.includes(c.uid)));
+  for(const [u,li] of plays){ const c=P.hand.find(x=>x.uid===u); if(c) queuePlay(S,ME,c,li); }
+  NET.myTurn={turn:S.turn,plays,snap:!!P.snapped}; netSend('turn',NET.myTurn); netStopClock();
+  $('#btnEnd').classList.add('waiting'); $('#turnLbl').textContent='รอคู่แข่ง…'; netTryResolve(); }
+function netTryResolve(){ if(!NET||!NET.myTurn||!NET.oppTurn||!S||NET.oppTurn.turn!==S.turn) return; const t=NET.oppTurn; NET.oppTurn=null;
+  const O=S.players[OP]; for(const [u,li] of t.plays){ const c=O.hand.find(x=>x.uid===u); if(!c||!queuePlay(S,OP,c,li)) console.warn('desync: opponent play rejected',u,li); }
+  if(t.snap&&!O.snapped){ snap(S,OP); toast('คู่แข่งกด สแนป! เดิมพันจะเพิ่มเป็นสองเท่า'); setTimeout(()=>{ FX.shock('#ff7a8a'); pulseCubes(); sfx('oppsnap'); },300); }
+  $('#btnEnd').classList.remove('waiting'); busy=true; resolveTurn(); }
+function endOnline(){ const kind=S.net; const w=S.winner, ret=S.retreated; const win=w===ME, draw=w===-1; const cubes=ret!=null?S.cubes:S.cubes*(S.pendingSnap?2:1);
+  const before=prof.bia, beforeRank=prof.rank||0; let bia=0, rk=0;
+  if(kind==='ranked'){ bia=win?15:5; rk=win?cubes:draw?0:-cubes; prof.rank=Math.max(0,beforeRank+rk); if(win){ prof.wins++; } else if(!draw){ prof.losses++; } } else bia=5;
+  prof.bia+=bia; const playedIds=[...new Set([...allBoard(S),...S.destroyed].filter(c=>c.owner===ME).map(c=>c.def.id))].filter(id=>prof.owned[id]&&prof.owned[id].tier<6);
+  let spareGot=null; if(playedIds.length&&(win||Math.random()<.25)){ spareGot=playedIds[Math.floor(Math.random()*playedIds.length)]; prof.owned[spareGot].dup=(prof.owned[spareGot].dup||0)+1; }
+  saveProfile(); const n=NET; NET=null; if(n&&n.ch) setTimeout(()=>{ try{ sb.removeChannel(n.ch); }catch(e){} },1500);
+  const r0=rankOf(beforeRank), r1=rankOf(prof.rank||0);
+  if(win){ FX.confetti(); FX.lanterns(14); FX.fireworks(7); sfx('win'); } else if(!draw){ FX.shake($('#board')); sfx('lose'); }
+  modal(`<div class="result"><h2 class="${win?'win':draw?'':'lose'}">${win?'ชนะ!':draw?'เสมอ':'แพ้'}</h2><p>${ret===ME?'คุณถอย':ret===OP?'คู่แข่งถอย!':`สนามที่ชนะ ${[0,1,2].filter(i=>locWinner(S,i)===ME).length}/3`} · ${cubes} แต้มคิวบ์</p>
+    ${kind==='ranked'?`<div class="rankBox" style="--rc:${r1.c}"><b>${r1.n}</b><span>${prof.rank} แต้ม <em class="${rk>=0?'gain':'loss'}">${rk>=0?'+':''}${rk}</em></span><div class="rbar"><i style="width:${Math.round(r1.prog*100)}%"></i></div><small>${r1.next?`อีก ${r1.next.p-prof.rank} แต้มถึง ${r1.next.n}`:'อยู่บนยอดดอยแล้ว!'}</small></div>${r1.i>r0.i?'<p class="gain">ปีนขึ้นดอยใหม่แล้ว!</p>':''}`:'<p class="muted">ห้องเพื่อน · ไม่นับแรงค์</p>'}
+    <p>ได้ <b class="gain">+${bia}</b> เบี้ย${spareGot?` · อะไหล่ <b>${esc(L(CARDS[spareGot].name))}</b> +1`:''}</p>
+    <div class="actions"><button class="btn ghost" id="toHome" type="button">หน้าหลัก</button><button class="btn end" id="again" type="button">${kind==='ranked'?'หาคู่ใหม่':'กลับหน้าหลัก'}</button></div></div>`,b=>{ b.querySelector('#toHome').onclick=()=>{ closeModal(); show('scrHome'); }; b.querySelector('#again').onclick=()=>{ closeModal(); if(kind==='ranked') findRanked(); else show('scrHome'); }; }); }
+$('#btnRanked').onclick=()=>findRanked();
+$('#btnRoom').onclick=()=>roomMenu();
 
 /* ---------- player profile ---------- */
 function avatarHTML(){ const a=prof.avatar; if(a&&a.type==='card'&&CARDS[a.id]) return `<img src="art/${a.id}.webp" alt="">`; if(a&&(a.type==='img'||a.type==='google')&&a.src) return `<img src="${esc(a.src)}" alt="" referrerpolicy="no-referrer">`;
@@ -189,7 +298,7 @@ function renderProfile(){ const owned=Object.keys(prof.owned).filter(id=>CARDS[i
    <div class="pfHead"><button class="pfAv" id="pfAvBtn" type="button" aria-label="เปลี่ยนรูปโปรไฟล์">${avatarHTML()}<span class="pfCam">เปลี่ยนรูป</span></button>
      <div class="pfName"><label for="pfNameIn" class="pfLbl">ชื่อผู้เล่น</label><div class="pfRow"><input id="pfNameIn" maxlength="20" value="${esc(prof.name)}" autocomplete="nickname"><button class="btn end sm" id="pfSave" type="button">บันทึก</button></div><small id="pfMsg" class="muted"></small></div></div>
    <div class="pfStats">
-     <div><b>${prof.cl}</b><small>ระดับคอลเลกชัน</small></div><div><b>${prof.wins}</b><small>ชนะ</small></div><div><b>${prof.losses}</b><small>แพ้</small></div><div><b>${games?Math.round(prof.wins/games*100):0}%</b><small>อัตราชนะ</small></div>
+     <div class="pfRank" style="--rc:${rankOf(prof.rank||0).c}"><b>${rankOf(prof.rank||0).n}</b><small>แรงค์ · ${prof.rank||0} แต้ม</small></div><div><b>${prof.cl}</b><small>ระดับคอลเลกชัน</small></div><div><b>${prof.wins}</b><small>ชนะ</small></div><div><b>${prof.losses}</b><small>แพ้</small></div><div><b>${games?Math.round(prof.wins/games*100):0}%</b><small>อัตราชนะ</small></div>
      <div><b>${owned.length}/${PLAYABLE.length}</b><small>การ์ดที่มี</small></div><div><b>${legends}</b><small>ตำนาน</small></div><div><b class="rainbowTxt">${duals}</b><small>สองแผ่นดิน</small></div><div><b>${laikham}</b><small>ขั้นลายคำ</small></div></div>
    <h4>การ์ดแต่ละจังหวัด</h4>
    <div class="pfProv">${byProv.map(([k,n,t])=>`<div><i style="--c:${PROV[k].col};--k:${PROV[k].ink}">${esc(L(PROV[k].ab))}</i><span class="bar"><em style="width:${t?n/t*100:0}%;background:${PROV[k].col}"></em></span><small>${n}/${t}</small></div>`).join('')}</div>
