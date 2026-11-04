@@ -247,3 +247,36 @@ button{font-family:inherit;color:inherit;cursor:pointer}
 .btn.play.sm{font-size:16px;padding:.5em 1.2em;align-self:flex-start;margin-top:4px}
 .tutIntro .logo{margin-bottom:6px}
 @media (prefers-reduced-motion:reduce){ .upb,.hl,.coach{animation:none!important} .d10 .card{transition:none} }
+/* ---------- sound buttons ---------- */
+.snd{display:flex;gap:4px}
+.snd .mini{min-width:34px;padding:.45em .55em}
+.snd .mini.off{opacity:.4;text-decoration:line-through}
+.mTop .opp{display:flex;flex-direction:column;min-width:0}
+.trackName{font-size:11px;color:var(--gold);font-weight:500;opacity:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trackName.show{animation:trackIn 4s ease forwards}
+@keyframes trackIn{0%{opacity:0;transform:translateX(-8px)}12%{opacity:1;transform:none}80%{opacity:1}100%{opacity:.55}}
+/* ---------- big effects ---------- */
+.banner{position:fixed;left:0;right:0;top:42%;z-index:28;pointer-events:none;display:flex;justify-content:center;animation:bnr 1.5s cubic-bezier(.2,.8,.2,1) forwards}
+.banner span{font-family:var(--fd);font-weight:700;font-size:clamp(30px,9vw,54px);letter-spacing:.06em;color:var(--gold2);padding:.15em 1.4em;background:linear-gradient(90deg,transparent,rgba(20,12,30,.88) 18%,rgba(20,12,30,.88) 82%,transparent);border-block:2px solid rgba(232,182,74,.75);text-shadow:0 0 22px rgba(232,182,74,.9),0 3px 0 #5a1d10}
+.banner.final span{color:#ffd0c4;border-color:#ff7a6a;text-shadow:0 0 24px rgba(255,122,106,.95),0 3px 0 #5a1d10}
+.banner.loc{top:30%}.banner.loc span{font-family:var(--fb);font-size:clamp(22px,6.5vw,36px);letter-spacing:0}
+@keyframes bnr{0%{opacity:0;transform:translateX(60%) skewX(-12deg)}18%{opacity:1;transform:none}75%{opacity:1;transform:translateX(-3%)}100%{opacity:0;transform:translateX(-60%) skewX(12deg)}}
+.splash{position:fixed;inset:0;z-index:27;pointer-events:none;display:grid;place-items:center;background:radial-gradient(circle,rgba(10,6,16,.55),rgba(10,6,16,.2) 70%);animation:spIn .3s ease}
+.splash .sRays{position:absolute;width:min(130vw,900px);aspect-ratio:1;background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--sc) 55%,transparent) 0 7deg,transparent 7deg 20deg);-webkit-mask:radial-gradient(circle,#000 10%,transparent 62%);mask:radial-gradient(circle,#000 10%,transparent 62%);animation:raySpin2 1.3s linear}
+.splash.dual .sRays{background:repeating-conic-gradient(from 0deg,rgba(255,107,107,.5) 0 6deg,transparent 6deg 12deg,rgba(255,230,107,.5) 12deg 18deg,transparent 18deg 24deg,rgba(107,228,255,.5) 24deg 30deg,transparent 30deg 36deg,rgba(210,127,255,.5) 36deg 42deg,transparent 42deg 48deg)}
+.splash.opp .sRays{filter:hue-rotate(-30deg) saturate(1.4)}
+.splash .sCard{position:relative;animation:spCard .9s cubic-bezier(.2,.9,.25,1.25) forwards}
+.splash .sCard .card{--w:min(200px,46vw);box-shadow:0 0 50px color-mix(in srgb,var(--sc) 80%,transparent),0 20px 50px rgba(0,0,0,.7)}
+.splash.out{animation:spOut .35s ease-in forwards}
+@keyframes spIn{from{opacity:0}}
+@keyframes spOut{to{opacity:0;transform:scale(.6) translateY(30%)}}
+@keyframes spCard{0%{transform:scale(.3) rotateY(180deg);filter:brightness(3)}55%{transform:scale(1.08) rotateY(0);filter:brightness(1.3)}100%{transform:scale(1);filter:none}}
+@keyframes raySpin2{from{transform:rotate(0) scale(.5);opacity:0}30%{opacity:1}to{transform:rotate(50deg) scale(1.1);opacity:.85}}
+.glowAll{position:fixed;inset:0;z-index:26;pointer-events:none;background:radial-gradient(ellipse at 50% 12%,var(--gc),transparent 65%);animation:glowA 1.4s ease-out forwards}
+@keyframes glowA{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+.crown{position:absolute;left:50%;top:50%;z-index:3;transform:translate(-50%,-50%) rotate(-12deg);font-family:var(--fd);font-weight:700;font-size:clamp(18px,5vw,28px);padding:.1em .5em;border-radius:8px;border:3px solid;animation:stamp .45s cubic-bezier(.2,.9,.3,1.4)}
+.crown.me{color:#ffe7a3;border-color:#e8b64a;background:rgba(60,35,5,.75);box-shadow:0 0 22px rgba(232,182,74,.9)}
+.crown.opp{color:#ffb3a8;border-color:#d8423a;background:rgba(50,10,10,.7)}
+@keyframes stamp{0%{transform:translate(-50%,-50%) rotate(-12deg) scale(3);opacity:0}100%{transform:translate(-50%,-50%) rotate(-12deg) scale(1);opacity:1}}
+.fly.bigfly{font-size:26px;animation-duration:1.2s}
+@media (prefers-reduced-motion:reduce){ .banner,.splash,.glowAll,.crown,.trackName.show{animation:none!important} }
